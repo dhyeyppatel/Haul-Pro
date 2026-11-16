@@ -414,6 +414,116 @@ def upload_avatar():
     })
 
 # ==========================================
+# SETTINGS & ACCOUNT ENDPOINTS
+# ==========================================
+
+@app.route("/api/auth/change-password", methods=["POST"])
+def change_password():
+    auth_user = authenticate()
+    if not auth_user:
+        return jsonify({"success": False, "error": "Unauthorized"}), 401
+
+    data = request.get_json() or {}
+    current_password = data.get("current_password") or ""
+    new_password = data.get("new_password") or ""
+
+    if not current_password or not new_password:
+        return jsonify({"success": False, "error": "Both current and new password are required."}), 400
+    if len(new_password) < 6:
+        return jsonify({"success": False, "error": "New password must be at least 6 characters."}), 400
+
+    database = get_db()
+    user_id = ObjectId(auth_user["id"])
+    user = database.users.find_one({"_id": user_id})
+    if not user or not bcrypt.checkpw(current_password.encode("utf-8"), user["password_hash"].encode("utf-8")):
+        return jsonify({"success": False, "error": "Current password is incorrect."}), 400
+
+    salt = bcrypt.gensalt(10)
+    new_hash = bcrypt.hashpw(new_password.encode("utf-8"), salt).decode("utf-8")
+    database.users.update_one({"_id": user_id}, {"$set": {"password_hash": new_hash, "updated_at": datetime.datetime.utcnow()}})
+    return jsonify({"success": True, "message": "Password updated successfully."})
+
+@app.route("/api/user/storage-stats", methods=["GET"])
+def get_storage_stats():
+    auth_user = authenticate()
+    if not auth_user:
+        return jsonify({"success": False, "error": "Unauthorized"}), 401
+
+    database = get_db()
+    user_id = auth_user["id"]
+    files = list(database.files.find({"user_id": user_id}))
+
+    breakdown = {"image": 0, "video": 0, "audio": 0, "document": 0, "archive": 0, "code": 0, "other": 0}
+    trashed_bytes = 0
+    trashed_count = 0
+    total_active_bytes = 0
+
+    for f in files:
+        sz = f.get("size", 0)
+        if f.get("is_trashed"):
+            trashed_bytes += sz
+            trashed_count += 1
+        else:
+            total_active_bytes += sz
+            cat = f.get("category", "other")
+            if cat in breakdown:
+                breakdown[cat] += sz
+            else:
+                breakdown["other"] += sz
+
+    database.users.update_one({"_id": ObjectId(user_id)}, {"$set": {"storage_used_bytes": total_active_bytes}})
+    user = database.users.find_one({"_id": ObjectId(user_id)})
+
+    return jsonify({
+        "success": True,
+        "storage_used": total_active_bytes,
+        "storage_limit": user.get("storage_limit_bytes", 15 * 1024 * 1024 * 1024),
+        "breakdown": breakdown,
+        "trashed_bytes": trashed_bytes,
+        "trashed_count": trashed_count,
+        "api_key": HAUL_MEDIA_API_KEY,
+        "media_host_url": MEDIA_HOST_URL
+    })
+
+@app.route("/api/files/empty-trash", methods=["POST"])
+def empty_trash():
+    auth_user = authenticate()
+    if not auth_user:
+        return jsonify({"success": False, "error": "Unauthorized"}), 401
+
+    database = get_db()
+    user_id = auth_user["id"]
+    trashed_files = list(database.files.find({"user_id": user_id, "is_trashed": True}))
+
+    for f in trashed_files:
+        if f.get("delete_token"):
+            try:
+                requests.post(f"{MEDIA_HOST_URL}/delete/{f['delete_token']}", timeout=4)
+            except Exception:
+                pass
+
+    database.files.delete_many({"user_id": user_id, "is_trashed": True})
+
+    # Recalculate storage used
+    active_files = list(database.files.find({"user_id": user_id}))
+    new_used = sum(f.get("size", 0) for f in active_files)
+    database.users.update_one({"_id": ObjectId(user_id)}, {"$set": {"storage_used_bytes": new_used}})
+
+    return jsonify({"success": True, "deleted_count": len(trashed_files), "new_storage_used": new_used})
+
+@app.route("/api/user/preferences", methods=["PATCH"])
+def update_preferences():
+    auth_user = authenticate()
+    if not auth_user:
+        return jsonify({"success": False, "error": "Unauthorized"}), 401
+
+    data = request.get_json() or {}
+    database = get_db()
+    user_id = ObjectId(auth_user["id"])
+    database.users.update_one({"_id": user_id}, {"$set": {"preferences": data, "updated_at": datetime.datetime.utcnow()}})
+    return jsonify({"success": True, "preferences": data})
+
+# ==========================================
 # FOLDER ENDPOINTS
 # ==========================================
 
@@ -634,6 +744,7 @@ def upload_files():
 
     folder_param = request.form.get("folderId")
     folder_id = ObjectId(folder_param) if folder_param and folder_param not in ("root", "null") else None
+    is_public_pref = request.form.get("is_public") == "true"
 
     database = get_db()
     user_id = ObjectId(auth_user["id"])
@@ -682,7 +793,7 @@ def upload_files():
             "category": category,
             "hosted_url": hosted_url,
             "delete_token": delete_token,
-            "is_public": False,
+            "is_public": is_public_pref,
             "is_starred": False,
             "is_trashed": False,
             "tags": [],

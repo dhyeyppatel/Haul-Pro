@@ -37,6 +37,9 @@
   <!-- TOPBAR -->
   <header class="topbar">
     <div class="topbar-left">
+      <button id="mobile-menu-btn" class="icon-btn mobile-menu-btn" title="Open navigation">
+        <span id="mobile-menu-icon"></span>
+      </button>
       <a href="/" class="brand-logo">
         <span id="logo-icon-container"></span>
         <span class="brand-title">Haul Pro</span>
@@ -53,6 +56,9 @@
 
     <div class="topbar-right">
       <button id="topbar-signin-btn" class="topbar-signin-btn" style="display: none;">Sign in</button>
+      <button id="topbar-settings-btn" class="icon-btn topbar-settings-btn" title="Settings">
+        <span id="topbar-settings-icon"></span>
+      </button>
       <button id="user-profile-btn" class="user-profile-btn" title="Haul Account">U</button>
       
       <!-- User Profile Dropdown -->
@@ -92,6 +98,14 @@
           </div>
         </button>
 
+        <button id="profile-settings-btn" class="profile-menu-item" title="Preferences, API tokens, and storage">
+          <span id="profile-settings-icon"></span>
+          <div class="menu-item-text">
+            <div class="menu-item-title">Settings</div>
+            <div class="menu-item-sub">Preferences, security & storage</div>
+          </div>
+        </button>
+
         <div class="profile-dropdown-divider"></div>
         <button id="profile-logout-btn" class="profile-logout-btn">Sign out</button>
       </div>
@@ -101,8 +115,11 @@
   <!-- APP MAIN CONTAINER -->
   <div class="app-container">
 
+    <!-- SIDEBAR BACKDROP (FOR MOBILE DRAWER) -->
+    <div id="sidebar-backdrop" class="sidebar-backdrop"></div>
+
     <!-- SIDEBAR -->
-    <aside class="sidebar">
+    <aside class="sidebar" id="app-sidebar">
       <button id="new-btn" class="new-btn">
         <span id="new-icon-container"></span>
         <span>New</span>
@@ -503,6 +520,201 @@
     </div>
   </div>
 
+  <!-- APPLE-STYLE SETTINGS MODAL -->
+  <div id="settings-modal" class="modal-backdrop" style="display: none;">
+    <div class="modal-card apple-modal settings-modal-card">
+      <div class="modal-header apple-modal-header">
+        <div class="settings-header-left">
+          <span id="settings-modal-icon" class="settings-modal-icon"></span>
+          <h3 class="modal-title">Settings</h3>
+        </div>
+        <button type="button" class="icon-btn apple-close-btn" id="settings-close-btn" title="Close">
+          <span id="settings-close-icon"></span>
+        </button>
+      </div>
+
+      <!-- Segmented Navigation (Apple macOS / iOS style) -->
+      <div class="settings-nav-bar">
+        <button type="button" class="settings-nav-item active" data-tab="general">
+          <span id="settings-nav-general-icon"></span>
+          <span>General</span>
+        </button>
+        <button type="button" class="settings-nav-item" data-tab="storage">
+          <span id="settings-nav-storage-icon"></span>
+          <span>Storage</span>
+        </button>
+        <button type="button" class="settings-nav-item" data-tab="security">
+          <span id="settings-nav-security-icon"></span>
+          <span>Security</span>
+        </button>
+        <button type="button" class="settings-nav-item" data-tab="developer">
+          <span id="settings-nav-dev-icon"></span>
+          <span>Developer API</span>
+        </button>
+      </div>
+
+      <div class="modal-body settings-modal-body">
+        <!-- TAB 1: GENERAL PREFERENCES -->
+        <div id="settings-tab-general" class="settings-tab-pane active">
+          <div class="apple-group">
+            <div class="apple-group-header">PREFERENCES</div>
+            <div class="apple-cell">
+              <div class="apple-cell-info">
+                <div class="apple-cell-title">Default Layout</div>
+                <div class="apple-cell-sub">Choose how your files are displayed by default</div>
+              </div>
+              <div class="apple-segmented-control" id="pref-view-segmented">
+                <button type="button" class="apple-segmented-btn active" data-value="grid">Grid</button>
+                <button type="button" class="apple-segmented-btn" data-value="list">List</button>
+              </div>
+            </div>
+            <div class="apple-cell">
+              <div class="apple-cell-info">
+                <div class="apple-cell-title">Default Upload Visibility</div>
+                <div class="apple-cell-sub">Uploaded files will be private unless you publish them</div>
+              </div>
+              <div class="apple-segmented-control" id="pref-vis-segmented">
+                <button type="button" class="apple-segmented-btn active" data-value="private">Private</button>
+                <button type="button" class="apple-segmented-btn" data-value="public">Public</button>
+              </div>
+            </div>
+            <div class="apple-cell">
+              <div class="apple-cell-info">
+                <div class="apple-cell-title">Auto-Copy Link</div>
+                <div class="apple-cell-sub">Automatically copy direct media link to clipboard upon upload</div>
+              </div>
+              <label class="apple-toggle">
+                <input type="checkbox" id="pref-autocopy-toggle">
+                <span class="apple-toggle-slider"></span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 2: STORAGE BREAKDOWN -->
+        <div id="settings-tab-storage" class="settings-tab-pane">
+          <div class="apple-group">
+            <div class="apple-group-header">STORAGE USAGE & BREAKDOWN</div>
+            <div class="storage-breakdown-card">
+              <div class="storage-usage-headline">
+                <span id="storage-detail-used" class="storage-headline-val">0 B</span>
+                <span class="storage-headline-sub">of 15 GB total</span>
+              </div>
+              <div class="storage-segmented-bar" id="storage-segmented-bar">
+                <div class="seg-fill seg-image" id="seg-bar-image" style="width: 0%;" title="Images"></div>
+                <div class="seg-fill seg-video" id="seg-bar-video" style="width: 0%;" title="Videos"></div>
+                <div class="seg-fill seg-doc" id="seg-bar-doc" style="width: 0%;" title="Documents"></div>
+                <div class="seg-fill seg-audio" id="seg-bar-audio" style="width: 0%;" title="Audio"></div>
+                <div class="seg-fill seg-other" id="seg-bar-other" style="width: 0%;" title="Other"></div>
+              </div>
+              <div class="storage-legend" id="storage-legend">
+                <div class="legend-item"><span class="legend-dot seg-image"></span>Images: <span id="leg-image-size">0 B</span></div>
+                <div class="legend-item"><span class="legend-dot seg-video"></span>Videos: <span id="leg-video-size">0 B</span></div>
+                <div class="legend-item"><span class="legend-dot seg-doc"></span>Documents: <span id="leg-doc-size">0 B</span></div>
+                <div class="legend-item"><span class="legend-dot seg-audio"></span>Audio: <span id="leg-audio-size">0 B</span></div>
+                <div class="legend-item"><span class="legend-dot seg-other"></span>Others: <span id="leg-other-size">0 B</span></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="apple-group" style="margin-top: 16px;">
+            <div class="apple-group-header">RECLAIM STORAGE</div>
+            <div class="apple-cell">
+              <div class="apple-cell-info">
+                <div class="apple-cell-title">Empty Trash</div>
+                <div class="apple-cell-sub" id="settings-trash-info">Permanently purge deleted files to recover storage quota</div>
+              </div>
+              <button type="button" class="apple-btn-danger" id="empty-trash-btn">Empty Trash</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 3: SECURITY -->
+        <div id="settings-tab-security" class="settings-tab-pane">
+          <form id="change-password-form">
+            <div class="apple-group">
+              <div class="apple-group-header">CHANGE PASSWORD</div>
+              <div class="apple-input-row">
+                <label>Current Password</label>
+                <input type="password" id="pw-current" placeholder="Current password" required>
+              </div>
+              <div class="apple-input-row">
+                <label>New Password</label>
+                <input type="password" id="pw-new" placeholder="At least 6 characters" minlength="6" required>
+              </div>
+              <div class="apple-input-row">
+                <label>Confirm Password</label>
+                <input type="password" id="pw-confirm" placeholder="Re-enter new password" minlength="6" required>
+              </div>
+            </div>
+            <div id="change-pw-error" class="modal-error" style="display: none; margin-top: 12px;"></div>
+            <div id="change-pw-success" class="modal-success" style="display: none; margin-top: 12px;"></div>
+            <div style="margin-top: 16px; display: flex; justify-content: flex-end;">
+              <button type="submit" class="btn-filled" id="save-password-btn">Update Password</button>
+            </div>
+          </form>
+        </div>
+
+        <!-- TAB 4: DEVELOPER API -->
+        <div id="settings-tab-developer" class="settings-tab-pane">
+          <div class="apple-group">
+            <div class="apple-group-header">STORAGE ENGINE INTEGRATION</div>
+            <div class="apple-cell">
+              <div class="apple-cell-info">
+                <div class="apple-cell-title">Engine Architecture</div>
+                <div class="apple-cell-sub">CommonThread Hybrid Telegram Cloud + Cloudflare R2 Worker Edge</div>
+              </div>
+              <span class="apple-badge-active">Online</span>
+            </div>
+            <div class="apple-cell">
+              <div class="apple-cell-info">
+                <div class="apple-cell-title">Media Storage URL</div>
+                <div class="apple-cell-code" id="dev-server-url">https://media-hosting.dhyeyp254.workers.dev</div>
+              </div>
+            </div>
+            <div class="apple-cell">
+              <div class="apple-cell-info">
+                <div class="apple-cell-title">Developer API Key</div>
+                <div class="apple-cell-code" id="dev-api-key">ct_dev_bbd2ae65abc5464d7965effceccf4fa8</div>
+              </div>
+              <button type="button" class="btn-text" id="copy-api-key-btn">Copy Key</button>
+            </div>
+            <div class="apple-cell">
+              <div class="apple-cell-info">
+                <div class="apple-cell-title">ShareX & ImgBB Drop-in Endpoint</div>
+                <div class="apple-cell-code">POST /api/1/upload</div>
+              </div>
+              <button type="button" class="btn-text" id="copy-sharex-url-btn">Copy URL</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MOBILE BOTTOM NAVIGATION (Apple iOS Style) -->
+  <nav id="mobile-tab-bar" class="mobile-tab-bar">
+    <button type="button" class="mobile-tab-item active" data-nav="drive" title="My Drive">
+      <span class="mobile-tab-icon" id="mob-nav-drive-icon"></span>
+      <span class="mobile-tab-label">Drive</span>
+    </button>
+    <button type="button" class="mobile-tab-item" data-nav="recent" title="Recent files">
+      <span class="mobile-tab-icon" id="mob-nav-recent-icon"></span>
+      <span class="mobile-tab-label">Recent</span>
+    </button>
+    <button type="button" class="mobile-fab-btn" id="mobile-fab-btn" title="Add files or create folders">
+      <span id="mob-fab-icon"></span>
+    </button>
+    <button type="button" class="mobile-tab-item" data-nav="starred" title="Starred">
+      <span class="mobile-tab-icon" id="mob-nav-starred-icon"></span>
+      <span class="mobile-tab-label">Starred</span>
+    </button>
+    <button type="button" class="mobile-tab-item" data-nav="trash" title="Trash">
+      <span class="mobile-tab-icon" id="mob-nav-trash-icon"></span>
+      <span class="mobile-tab-label">Trash</span>
+    </button>
+  </nav>
+
   <!-- TOAST CONTAINER -->
   <div id="toast-container" class="toast-container"></div>
 
@@ -512,6 +724,7 @@
   <script src="/js/auth.js"></script>
   <script src="/js/viewer.js"></script>
   <script src="/js/uploader.js"></script>
+  <script src="/js/settings.js"></script>
   <script src="/js/drive.js"></script>
 
   <!-- ICON INITIALIZER -->
@@ -575,10 +788,43 @@
       const multiTrash = document.getElementById('multi-trash-icon');
       if (multiTrash) multiTrash.innerHTML = Icons.trash;
 
+      // Settings & Mobile Navigation Icons
+      const mobMenu = document.getElementById('mobile-menu-icon');
+      if (mobMenu) mobMenu.innerHTML = Icons.menu;
+      const topSettings = document.getElementById('topbar-settings-icon');
+      if (topSettings) topSettings.innerHTML = Icons.settings;
+      const profSettings = document.getElementById('profile-settings-icon');
+      if (profSettings) profSettings.innerHTML = Icons.settings;
+      const setModalIcon = document.getElementById('settings-modal-icon');
+      if (setModalIcon) setModalIcon.innerHTML = Icons.settings;
+      const setCloseIcon = document.getElementById('settings-close-icon');
+      if (setCloseIcon) setCloseIcon.innerHTML = Icons.close;
+
+      const setNavGen = document.getElementById('settings-nav-general-icon');
+      if (setNavGen) setNavGen.innerHTML = Icons.sliders;
+      const setNavStor = document.getElementById('settings-nav-storage-icon');
+      if (setNavStor) setNavStor.innerHTML = Icons.storage_drive;
+      const setNavSec = document.getElementById('settings-nav-security-icon');
+      if (setNavSec) setNavSec.innerHTML = Icons.shield;
+      const setNavDev = document.getElementById('settings-nav-dev-icon');
+      if (setNavDev) setNavDev.innerHTML = Icons.key;
+
+      const mobDrive = document.getElementById('mob-nav-drive-icon');
+      if (mobDrive) mobDrive.innerHTML = Icons.folder;
+      const mobRecent = document.getElementById('mob-nav-recent-icon');
+      if (mobRecent) mobRecent.innerHTML = Icons.info;
+      const mobFab = document.getElementById('mob-fab-icon');
+      if (mobFab) mobFab.innerHTML = Icons.plus;
+      const mobStarred = document.getElementById('mob-nav-starred-icon');
+      if (mobStarred) mobStarred.innerHTML = Icons.star;
+      const mobTrash = document.getElementById('mob-nav-trash-icon');
+      if (mobTrash) mobTrash.innerHTML = Icons.trash;
+
       // Start controllers
       Auth.init();
       Viewer.init();
       Uploader.init();
+      Settings.init();
     });
   </script>
 </body>

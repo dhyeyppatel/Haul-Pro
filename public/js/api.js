@@ -147,6 +147,8 @@ const API = {
     if (folderId && folderId !== 'root') {
       formData.append('folderId', folderId);
     }
+    const defaultVis = typeof Settings !== 'undefined' ? Settings.preferences.defaultVisibility : 'private';
+    formData.append('is_public', defaultVis === 'public' ? 'true' : 'false');
 
     return new Promise((resolve, reject) => {
       const xhr = new XMLHttpRequest();
@@ -236,5 +238,30 @@ const API = {
   async getPublicProfile(username, params = {}) {
     const query = new URLSearchParams(params).toString();
     return this.request(`/api/public/${encodeURIComponent(username)}?${query}`);
+  },
+
+  // Settings & Account APIs
+  async changePassword(current_password, new_password) {
+    return this.request('/api/auth/change-password', {
+      method: 'POST',
+      body: { current_password, new_password }
+    });
+  },
+
+  async getStorageStats() {
+    return this.request('/api/user/storage-stats');
+  },
+
+  async emptyTrash() {
+    return this.request('/api/files/empty-trash', {
+      method: 'POST'
+    });
+  },
+
+  async updatePreferences(preferences) {
+    return this.request('/api/user/preferences', {
+      method: 'PATCH',
+      body: preferences
+    });
   }
 };

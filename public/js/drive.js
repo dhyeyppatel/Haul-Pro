@@ -72,6 +72,10 @@ const Drive = {
       this.currentFolderId = urlFid;
     }
 
+    if (typeof Settings !== 'undefined' && Settings.preferences && Settings.preferences.defaultView) {
+      this.currentView = Settings.preferences.defaultView;
+    }
+
     if (!this.eventsBound) {
       this.bindEvents();
       this.bindModalEvents();
@@ -106,6 +110,70 @@ const Drive = {
         this.reload();
       });
     });
+
+    // Mobile Drawer Toggle & Backdrop
+    const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+    const sidebar = document.getElementById('app-sidebar');
+    const backdrop = document.getElementById('sidebar-backdrop');
+
+    const closeMobileSidebar = () => {
+      if (sidebar) sidebar.classList.remove('open');
+      if (backdrop) backdrop.classList.remove('active');
+    };
+
+    if (mobileMenuBtn && sidebar) {
+      mobileMenuBtn.addEventListener('click', () => {
+        sidebar.classList.toggle('open');
+        if (backdrop) backdrop.classList.toggle('active', sidebar.classList.contains('open'));
+      });
+    }
+
+    if (backdrop) {
+      backdrop.addEventListener('click', closeMobileSidebar);
+    }
+
+    // Close mobile drawer when clicking any nav item
+    document.querySelectorAll('.nav-list .nav-item').forEach(item => {
+      item.addEventListener('click', closeMobileSidebar);
+    });
+
+    // Mobile Bottom Tab Bar navigation
+    document.querySelectorAll('#mobile-tab-bar .mobile-tab-item').forEach(item => {
+      item.addEventListener('click', () => {
+        const nav = item.dataset.nav;
+        if (!nav) return;
+        document.querySelectorAll('#mobile-tab-bar .mobile-tab-item').forEach(el => el.classList.remove('active'));
+        item.classList.add('active');
+
+        // Sync with sidebar nav
+        document.querySelectorAll('.nav-list .nav-item').forEach(el => {
+          el.classList.toggle('active', el.dataset.nav === nav);
+        });
+
+        this.currentNav = nav;
+        this.currentFolderId = null;
+        this.searchQuery = '';
+        this.clearSelection();
+
+        if (this.isPublicMode) {
+          history.pushState(null, '', '/');
+          this.isPublicMode = false;
+          this.profileUsername = null;
+          this.isOwnerMode = false;
+        }
+
+        this.reload();
+      });
+    });
+
+    // Mobile FAB button (Quick upload files)
+    const mobileFabBtn = document.getElementById('mobile-fab-btn');
+    if (mobileFabBtn) {
+      mobileFabBtn.addEventListener('click', () => {
+        const fileInput = document.getElementById('file-upload-input');
+        if (fileInput) fileInput.click();
+      });
+    }
 
     // Filter Chips
     document.querySelectorAll('.chip').forEach(chip => {
@@ -660,16 +728,19 @@ const Drive = {
     const newBtn = document.getElementById('new-btn');
     const storageBox = document.querySelector('.sidebar-storage');
     const navItems = document.querySelectorAll('.nav-list .nav-item');
+    const mobFab = document.getElementById('mobile-fab-btn');
 
     if (this.isPublicMode && !this.isOwnerMode) {
       if (newBtn) newBtn.style.display = 'none';
       if (storageBox) storageBox.style.display = 'none';
+      if (mobFab) mobFab.style.display = 'none';
       navItems.forEach(item => {
         if (item.dataset.nav !== 'drive') item.style.display = 'none';
       });
     } else {
       if (newBtn) newBtn.style.display = 'flex';
       if (storageBox) storageBox.style.display = 'block';
+      if (mobFab) mobFab.style.display = 'flex';
       navItems.forEach(item => item.style.display = 'flex');
     }
   },
@@ -837,7 +908,7 @@ const Drive = {
            data-id="${folder.id}"
            draggable="${canManage}"
            ondblclick="Drive.openFolder('${folder.id}')"
-           onclick="Drive.selectFolder(this, '${folder.id}')"
+           onclick="Drive.onFolderClick(event, '${folder.id}')"
            oncontextmenu="Drive.showFolderContextMenu(event, '${folder.id}')"
            ondragover="Drive.onFolderDragOver(event)"
            ondragleave="Drive.onFolderDragLeave(event)"
@@ -1127,6 +1198,13 @@ const Drive = {
     this.currentFolderId = folderId;
     this.clearSelection();
     this.reload();
+  },
+
+  onFolderClick(e, folderId) {
+    if (e && (e.target.closest('.folder-card-actions') || e.target.closest('.vis-badge') || e.target.closest('.icon-btn-subtle'))) {
+      return;
+    }
+    this.openFolder(folderId);
   },
 
   selectFolder(el, folderId) {

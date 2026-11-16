@@ -119,7 +119,7 @@ const Uploader = {
       const fillEl = itemEl.querySelector('.upload-progress-fill');
 
       try {
-        await API.uploadFiles([file], Drive.currentFolderId, (percent) => {
+        const uploadRes = await API.uploadFiles([file], Drive.currentFolderId, (percent) => {
           const p = Math.min(100, Math.max(0, percent));
           if (statusEl) statusEl.textContent = `${p}%`;
           if (fillEl) fillEl.style.width = `${p}%`;
@@ -130,6 +130,13 @@ const Uploader = {
         if (fillEl) {
           fillEl.style.width = '100%';
           fillEl.style.backgroundColor = '#34a853';
+        }
+        if (uploadRes && uploadRes.files && uploadRes.files[0] && uploadRes.files[0].hosted_url) {
+          if (typeof Settings !== 'undefined' && Settings.preferences.autoCopy) {
+            navigator.clipboard.writeText(uploadRes.files[0].hosted_url).then(() => {
+              Drive.showToast('Media link copied to clipboard!');
+            }).catch(() => {});
+          }
         }
       } catch (err) {
         if (statusEl) {
