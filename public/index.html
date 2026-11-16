@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Haul Pro - Cloud Storage & Media Platform</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 87.3 78'><path d='m6.6 66.85 3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8h-27.5c0 1.55.4 3.1 1.2 4.5z' fill='%230066da'/><path d='m43.65 25-13.75-23.8c-1.35.8-2.5 1.9-3.3 3.3l-25.4 44c-.8 1.4-1.2 2.95-1.2 4.5h27.5z' fill='%2300ac47'/><path d='m73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75 7.65-13.25c.8-1.4 1.2-2.95 1.2-4.5h-27.502l5.852 11.5z' fill='%23ea4335'/><path d='m43.65 25 13.75-23.8c-1.35-.8-2.9-1.2-4.5-1.2h-18.5c-1.6 0-3.15.45-4.5 1.2z' fill='%2300832d'/><path d='m59.8 53h-32.3l-13.75 23.8c1.35.8 2.9 1.2 4.5 1.2h50.8c1.6 0 3.15-.45 4.5-1.2z' fill='%232684fc'/><path d='m73.4 26.5-12.7-22c-.8-1.4-1.95-2.5-3.3-3.3l-13.75 23.8 16.15 28h27.45c0-1.55-.4-3.1-1.2-4.5z' fill='%23ffba00'/></svg>">
+  <link rel="stylesheet" href="/css/drive.css">
+  <link rel="stylesheet" href="/css/viewer.css">
+  <link rel="stylesheet" href="/css/auth.css">
+</head>
+<body>
+
+  <!-- TOPBAR -->
+  <header class="topbar">
+    <div class="topbar-left">
+      <a href="/" class="brand-logo">
+        <span id="logo-icon-container"></span>
+        <span class="brand-title">Haul Pro</span>
+      </a>
+    </div>
+
+    <div class="topbar-center">
+      <div class="search-box">
+        <span id="search-icon-container"></span>
+        <input type="text" id="search-input" class="search-input" placeholder="Search in Drive..." autocomplete="off">
+        <span id="filter-icon-container" style="cursor: pointer;"></span>
+      </div>
+    </div>
+
+    <div class="topbar-right">
+      <button id="user-profile-btn" class="user-profile-btn" title="Google Account">U</button>
+      
+      <!-- User Profile Dropdown -->
+      <div id="profile-dropdown" class="profile-dropdown">
+        <div id="profile-avatar-lg" class="profile-avatar-lg">U</div>
+        <div id="profile-name" class="profile-name">User</div>
+        <div id="profile-email" class="profile-email">user@haul.pro</div>
+        <button id="profile-logout-btn" class="profile-logout-btn">Sign out</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- APP MAIN CONTAINER -->
+  <div class="app-container">
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+      <button id="new-btn" class="new-btn">
+        <span id="new-icon-container"></span>
+        <span>New</span>
+      </button>
+
+      <!-- New Dropdown Menu -->
+      <div id="new-dropdown-menu" class="dropdown-menu">
+        <div id="menu-new-folder" class="dropdown-item">
+          <span id="menu-folder-icon"></span>
+          <span>New folder</span>
+        </div>
+        <div style="height: 1px; background: #e8eaed; margin: 4px 0;"></div>
+        <div id="menu-upload-file" class="dropdown-item">
+          <span id="menu-upload-icon"></span>
+          <span>File upload</span>
+        </div>
+      </div>
+
+      <!-- Hidden File Upload Input -->
+      <input type="file" id="file-upload-input" multiple style="display: none;">
+
+      <!-- Nav Items -->
+      <ul class="nav-list">
+        <li class="nav-item active" data-nav="drive">
+          <span id="nav-drive-icon"></span>
+          <span>My Drive</span>
+        </li>
+        <li class="nav-item" data-nav="recent">
+          <span id="nav-recent-icon"></span>
+          <span>Recent</span>
+        </li>
+        <li class="nav-item" data-nav="starred">
+          <span id="nav-starred-icon"></span>
+          <span>Starred</span>
+        </li>
+        <li class="nav-item" data-nav="trash">
+          <span id="nav-trash-icon"></span>
+          <span>Trash</span>
+        </li>
+      </ul>
+
+      <!-- Storage Meter -->
+      <div class="sidebar-storage">
+        <div class="storage-title">
+          <span id="storage-icon-container"></span>
+          <span>Storage</span>
+        </div>
+        <div class="storage-bar-track">
+          <div id="storage-bar-fill" class="storage-bar-fill"></div>
+        </div>
+        <div id="storage-text" class="storage-text">0 B of 15 GB used</div>
+      </div>
+    </aside>
+
+    <!-- MAIN CONTENT EXPLORER -->
+    <main class="main-content">
+      <!-- Breadcrumbs & View Toggle Toolbar -->
+      <div class="toolbar">
+        <div id="breadcrumbs" class="breadcrumbs">
+          <div class="breadcrumb-item">My Drive</div>
+        </div>
+        <div class="actions-row">
+          <button id="toggle-view-btn" class="icon-btn" title="Switch layout">
+            <!-- Injected via JS -->
+          </button>
+        </div>
+      </div>
+
+      <!-- Filter Chips -->
+      <div class="filter-chips">
+        <button class="chip active" data-category="all">All</button>
+        <button class="chip" data-category="image">Photos & Wallpapers</button>
+        <button class="chip" data-category="book">eBooks & PDFs</button>
+        <button class="chip" data-category="video">Videos</button>
+        <button class="chip" data-category="document">Documents</button>
+        <button class="chip" data-category="audio">Audio</button>
+        <button class="chip" data-category="code">Code & Notes</button>
+        <button class="chip" data-category="archive">Archives</button>
+      </div>
+
+      <!-- File & Folder Explorer View -->
+      <div id="explorer-view" class="explorer-view">
+        <!-- Folders Section -->
+        <div id="folders-section" style="display: none;">
+          <div class="section-label">Folders</div>
+          <div id="folders-grid" class="folders-grid"></div>
+        </div>
+
+        <!-- Files Section -->
+        <div class="section-label" id="files-section-label" style="display: none;">Files</div>
+        <div id="files-container"></div>
+
+        <!-- Infinite Scroll Loading Indicator -->
+        <div id="infinite-loader" class="infinite-loader hidden">
+          <span>Loading more items...</span>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- DRAG & DROP FULL SCREEN OVERLAY -->
+  <div id="dropzone-overlay" class="dropzone-overlay">
+    <div id="dropzone-icon-container"></div>
+    <div class="dropzone-text">Drop files to upload them to Haul Pro</div>
+  </div>
+
+  <!-- FLOATING UPLOAD DRAWER -->
+  <div id="upload-drawer" class="upload-drawer">
+    <div class="upload-drawer-header">
+      <span id="upload-drawer-count">Uploading...</span>
+      <button class="icon-btn" style="color: white; width: 28px; height: 28px;" onclick="document.getElementById('upload-drawer').style.display='none'">
+        <span id="drawer-close-icon"></span>
+      </button>
+    </div>
+    <div id="upload-drawer-list" class="upload-drawer-list"></div>
+  </div>
+
+  <!-- CONTEXT MENU -->
+  <div id="context-menu" class="context-menu"></div>
+
+  <!-- IN-APP FILE VIEWER MODAL -->
+  <div id="viewer-modal" class="viewer-modal">
+    <div class="viewer-header">
+      <div class="viewer-title-info">
+        <button id="viewer-close-btn" class="viewer-btn" title="Close preview">
+          <span id="viewer-close-icon"></span>
+        </button>
+        <div id="viewer-filename" class="viewer-filename">File Name</div>
+      </div>
+      <div class="viewer-actions">
+        <button id="viewer-download-btn" class="viewer-btn" title="Download">
+          <span id="viewer-download-icon"></span>
+        </button>
+        <button id="viewer-copy-link-btn" class="viewer-btn" title="Copy direct link">
+          <span id="viewer-link-icon"></span>
+        </button>
+      </div>
+    </div>
+    <div id="viewer-body" class="viewer-body"></div>
+    
+    <!-- Image Zoom Controls -->
+    <div id="viewer-zoom-controls" class="viewer-zoom-controls" style="display: none;">
+      <button id="viewer-zoom-out" class="viewer-btn" title="Zoom out">-</button>
+      <button id="viewer-zoom-reset" class="viewer-btn" title="Reset zoom" style="font-size: 11px;">100%</button>
+      <button id="viewer-zoom-in" class="viewer-btn" title="Zoom in">+</button>
+    </div>
+  </div>
+
+  <!-- MULTI-USER AUTH MODAL -->
+  <div id="auth-backdrop" class="auth-backdrop">
+    <div class="auth-card">
+      <div class="auth-header">
+        <div id="auth-logo-container"></div>
+        <h2 id="auth-title" class="auth-title">Sign in</h2>
+        <p id="auth-subtitle" class="auth-subtitle">Continue to Haul Pro</p>
+      </div>
+
+      <div id="auth-error" class="auth-error"></div>
+
+      <form id="auth-form" class="auth-form">
+        <div id="auth-name-group" class="auth-input-group" style="display: none;">
+          <label class="auth-label">Full Name</label>
+          <input type="text" id="auth-name" class="auth-input" placeholder="Your name">
+        </div>
+
+        <div class="auth-input-group">
+          <label class="auth-label">Email Address</label>
+          <input type="email" id="auth-email" class="auth-input" placeholder="name@example.com" required>
+        </div>
+
+        <div class="auth-input-group">
+          <label class="auth-label">Password</label>
+          <input type="password" id="auth-password" class="auth-input" placeholder="Enter password (min 6 characters)" required>
+        </div>
+
+        <div class="auth-footer">
+          <button type="button" id="auth-switch-mode-btn" class="auth-btn-secondary">Create account</button>
+          <button type="submit" id="auth-submit-btn" class="auth-btn-primary">Sign in</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- SCRIPTS -->
+  <script src="/js/icons.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/auth.js"></script>
+  <script src="/js/viewer.js"></script>
+  <script src="/js/uploader.js"></script>
+  <script src="/js/drive.js"></script>
+
+  <!-- ICON INITIALIZER -->
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      // Inject SVGs into UI (Zero emojis)
+      document.getElementById('logo-icon-container').innerHTML = Icons.drive_logo;
+      document.getElementById('auth-logo-container').innerHTML = Icons.drive_logo;
+      document.getElementById('search-icon-container').innerHTML = Icons.search;
+      document.getElementById('filter-icon-container').innerHTML = Icons.filter;
+      document.getElementById('new-icon-container').innerHTML = Icons.plus;
+      document.getElementById('menu-folder-icon').innerHTML = Icons.folder;
+      document.getElementById('menu-upload-icon').innerHTML = Icons.file_generic;
+      document.getElementById('nav-drive-icon').innerHTML = Icons.folder;
+      document.getElementById('nav-recent-icon').innerHTML = Icons.info;
+      document.getElementById('nav-starred-icon').innerHTML = Icons.star;
+      document.getElementById('nav-trash-icon').innerHTML = Icons.trash;
+      document.getElementById('storage-icon-container').innerHTML = Icons.upload_cloud;
+      document.getElementById('dropzone-icon-container').innerHTML = Icons.upload_cloud;
+      document.getElementById('drawer-close-icon').innerHTML = Icons.close;
+      document.getElementById('viewer-close-icon').innerHTML = Icons.close;
+      document.getElementById('viewer-download-icon').innerHTML = Icons.download;
+      document.getElementById('viewer-link-icon').innerHTML = Icons.link;
+      document.getElementById('toggle-view-btn').innerHTML = Icons.view_list;
+
+      // Start controllers
+      Auth.init();
+      Viewer.init();
+      Uploader.init();
+    });
+  </script>
+</body>
+</html>
