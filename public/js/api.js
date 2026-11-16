@@ -248,6 +248,13 @@ const API = {
     });
   },
 
+  async deleteAccount(password) {
+    return this.request('/api/auth/delete-account', {
+      method: 'POST',
+      body: { password }
+    });
+  },
+
   async getStorageStats() {
     return this.request('/api/user/storage-stats');
   },

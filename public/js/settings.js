@@ -1,13 +1,149 @@
-// Haul Pro - Apple Style Settings & Preferences Controller
+// Haul Pro - Apple Style Settings, Guide, Help, Localization & Account Controller
 // Pure Vanilla JavaScript (ES6+), Zero Emojis
 
 const Settings = {
   preferences: {
     defaultView: 'grid',
     defaultVisibility: 'private',
-    autoCopy: true
+    autoCopy: true,
+    language: 'en'
   },
   currentTab: 'general',
+
+  i18n: {
+    en: {
+      drive: "My Drive",
+      recent: "Recent",
+      starred: "Starred",
+      trash: "Trash",
+      storage: "Storage",
+      guide: "Guide & Help",
+      settings: "Settings",
+      signout: "Sign Out",
+      general: "General",
+      security: "Security",
+      legal: "Legal",
+      help: "Help",
+      default_layout: "Default Layout",
+      default_layout_sub: "Choose how your files are displayed by default",
+      default_vis: "Default Upload Visibility",
+      default_vis_sub: "Uploaded files will be private unless you publish them",
+      autocopy: "Auto-Copy Link",
+      autocopy_sub: "Automatically copy direct media link to clipboard upon upload",
+      language: "Display Language",
+      language_sub: "Choose interface display language"
+    },
+    es: {
+      drive: "Mi Unidad",
+      recent: "Recientes",
+      starred: "Destacados",
+      trash: "Papelera",
+      storage: "Almacenamiento",
+      guide: "Guía y Ayuda",
+      settings: "Ajustes",
+      signout: "Cerrar Sesión",
+      general: "General",
+      security: "Seguridad",
+      legal: "Legal",
+      help: "Ayuda",
+      default_layout: "Diseño Predeterminado",
+      default_layout_sub: "Elige cómo se muestran tus archivos por defecto",
+      default_vis: "Visibilidad Predeterminada",
+      default_vis_sub: "Los archivos subidos serán privados a menos que los publiques",
+      autocopy: "Copiar Enlace Automático",
+      autocopy_sub: "Copiar enlace directo al portapapeles al subir",
+      language: "Idioma de la Interfaz",
+      language_sub: "Selecciona el idioma de visualización"
+    },
+    fr: {
+      drive: "Mon Drive",
+      recent: "Récents",
+      starred: "Favoris",
+      trash: "Corbeille",
+      storage: "Stockage",
+      guide: "Guide et Aide",
+      settings: "Paramètres",
+      signout: "Déconnexion",
+      general: "Général",
+      security: "Sécurité",
+      legal: "Légal",
+      help: "Aide",
+      default_layout: "Disposition par Défaut",
+      default_layout_sub: "Choisissez le mode d'affichage de vos fichiers",
+      default_vis: "Visibilité par Défaut",
+      default_vis_sub: "Les fichiers envoyés restent privés jusqu'à publication",
+      autocopy: "Copie Automatique du Lien",
+      autocopy_sub: "Copier automatiquement le lien direct après téléversement",
+      language: "Langue d'Affichage",
+      language_sub: "Choisissez la langue de l'interface"
+    },
+    de: {
+      drive: "Mein Drive",
+      recent: "Zuletzt",
+      starred: "Markiert",
+      trash: "Papierkorb",
+      storage: "Speicherplatz",
+      guide: "Anleitung & Hilfe",
+      settings: "Einstellungen",
+      signout: "Abmelden",
+      general: "Allgemein",
+      security: "Sicherheit",
+      legal: "Rechtliches",
+      help: "Hilfe",
+      default_layout: "Standardlayout",
+      default_layout_sub: "Wählen Sie das Standard-Dateiformat",
+      default_vis: "Standard-Sichtbarkeit",
+      default_vis_sub: "Hochgeladene Dateien sind standardmäßig privat",
+      autocopy: "Link Automatisch Kopieren",
+      autocopy_sub: "Direktlink nach dem Hochladen kopieren",
+      language: "Sprache",
+      language_sub: "Wählen Sie die Anzeigesprache"
+    },
+    hi: {
+      drive: "माई ड्राइव",
+      recent: "हाल ही के",
+      starred: "पसंदीदा",
+      trash: "ट्रैश",
+      storage: "स्टोरेज",
+      guide: "गाइड और सहायता",
+      settings: "सेटिंग्स",
+      signout: "लॉग आउट",
+      general: "सामान्य",
+      security: "सुरक्षा",
+      legal: "नियम व शर्तें",
+      help: "सहायता",
+      default_layout: "डिफ़ॉल्ट लेआउट",
+      default_layout_sub: "चुनें कि आपकी फ़ाइलें कैसे दिखाई दें",
+      default_vis: "डिफ़ॉल्ट दृश्यता",
+      default_vis_sub: "अपलोड की गई फाइलें निजी रहेंगी जब तक आप उन्हें सार्वजनिक न करें",
+      autocopy: "ऑटो-कॉपी लिंक",
+      autocopy_sub: "अपलोड होने पर डायरेक्ट मीडिया लिंक क्लिपबोर्ड में कॉपी करें",
+      language: "भाषा",
+      language_sub: "इंटरफ़ेस भाषा चुनें"
+    },
+    ja: {
+      drive: "マイドライブ",
+      recent: "最近",
+      starred: "スター付き",
+      trash: "ゴミ箱",
+      storage: "ストレージ",
+      guide: "ガイドとヘルプ",
+      settings: "設定",
+      signout: "ログアウト",
+      general: "一般",
+      security: "セキュリティ",
+      legal: "利用規約",
+      help: "ヘルプ",
+      default_layout: "デフォルト表示",
+      default_layout_sub: "ファイルのデフォルト表示形式を選択",
+      default_vis: "デフォルトの公開設定",
+      default_vis_sub: "アップロードされたファイルは公開するまで非公開です",
+      autocopy: "自動リンクコピー",
+      autocopy_sub: "アップロード時に直接リンクを自動コピー",
+      language: "表示言語",
+      language_sub: "インターフェースの言語を選択"
+    }
+  },
 
   init() {
     this.loadLocalPreferences();
@@ -24,6 +160,7 @@ const Settings = {
       // Ignore storage errors
     }
     this.applyPreferencesUI();
+    this.applyLanguage(this.preferences.language || 'en');
   },
 
   savePreferences(updates) {
@@ -57,6 +194,24 @@ const Settings = {
     if (autoCopyInput) {
       autoCopyInput.checked = Boolean(this.preferences.autoCopy);
     }
+
+    // Language dropdown
+    const langSelect = document.getElementById('pref-language-select');
+    if (langSelect && this.preferences.language) {
+      langSelect.value = this.preferences.language;
+    }
+  },
+
+  applyLanguage(lang) {
+    const dict = this.i18n[lang] || this.i18n['en'];
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+      const key = el.dataset.i18n;
+      if (dict[key]) {
+        el.textContent = dict[key];
+      }
+    });
+    const langSelect = document.getElementById('pref-language-select');
+    if (langSelect) langSelect.value = lang;
   },
 
   bindEvents() {
@@ -123,6 +278,16 @@ const Settings = {
       });
     }
 
+    const langSelect = document.getElementById('pref-language-select');
+    if (langSelect) {
+      langSelect.addEventListener('change', (e) => {
+        const lang = e.target.value;
+        this.savePreferences({ language: lang });
+        this.applyLanguage(lang);
+        Drive.showToast(`Language updated`);
+      });
+    }
+
     // Change password form
     const pwForm = document.getElementById('change-password-form');
     if (pwForm) {
@@ -157,14 +322,28 @@ const Settings = {
         });
       });
     }
+
+    // FAQ Accordion clicks
+    document.querySelectorAll('.faq-question').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const item = btn.closest('.faq-item');
+        if (item) {
+          const isOpen = item.classList.contains('active');
+          document.querySelectorAll('.faq-item').forEach(other => other.classList.remove('active'));
+          if (!isOpen) item.classList.add('active');
+        }
+      });
+    });
   },
 
-  async open() {
+  async open(tabName = 'general') {
     const modal = document.getElementById('settings-modal');
     if (!modal) return;
     modal.style.display = 'flex';
-    this.switchTab(this.currentTab || 'general');
-    await this.loadStats();
+    this.switchTab(tabName);
+    if (tabName === 'storage') {
+      await this.loadStats();
+    }
   },
 
   close() {
@@ -184,6 +363,77 @@ const Settings = {
     document.querySelectorAll('.settings-tab-pane').forEach(pane => {
       pane.classList.toggle('active', pane.id === `settings-tab-${tabName}`);
     });
+    if (tabName === 'storage') {
+      this.loadStats();
+    }
+  },
+
+  switchLegalDoc(docType) {
+    document.querySelectorAll('.legal-seg-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.legal === docType);
+    });
+    const privDoc = document.getElementById('legal-doc-privacy');
+    const termsDoc = document.getElementById('legal-doc-terms');
+    if (privDoc) privDoc.style.display = docType === 'privacy' ? 'block' : 'none';
+    if (termsDoc) termsDoc.style.display = docType === 'terms' ? 'block' : 'none';
+  },
+
+  openDeleteModal() {
+    const modal = document.getElementById('delete-account-modal');
+    if (modal) {
+      modal.style.display = 'flex';
+      const pwInput = document.getElementById('delete-acc-password');
+      if (pwInput) {
+        pwInput.value = '';
+        setTimeout(() => pwInput.focus(), 100);
+      }
+      const err = document.getElementById('delete-acc-error');
+      if (err) err.style.display = 'none';
+    }
+  },
+
+  closeDeleteModal() {
+    const modal = document.getElementById('delete-account-modal');
+    if (modal) modal.style.display = 'none';
+    const pwInput = document.getElementById('delete-acc-password');
+    if (pwInput) pwInput.value = '';
+    const err = document.getElementById('delete-acc-error');
+    if (err) err.style.display = 'none';
+  },
+
+  async handleDeleteAccountConfirm(e) {
+    if (e) e.preventDefault();
+    const pwInput = document.getElementById('delete-acc-password');
+    const errEl = document.getElementById('delete-acc-error');
+    const btn = document.getElementById('confirm-delete-acc-btn');
+    if (!pwInput || !pwInput.value) return;
+
+    if (errEl) errEl.style.display = 'none';
+    if (btn) btn.disabled = true;
+
+    try {
+      const res = await API.deleteAccount(pwInput.value);
+      if (res.success) {
+        this.closeDeleteModal();
+        this.close();
+        Drive.showToast('Account and all files deleted permanently.', 'info');
+        setTimeout(() => {
+          window.location.href = '/';
+        }, 1200);
+      } else {
+        if (errEl) {
+          errEl.textContent = res.error || 'Failed to delete account.';
+          errEl.style.display = 'block';
+        }
+      }
+    } catch (err) {
+      if (errEl) {
+        errEl.textContent = err.message || 'Error deleting account.';
+        errEl.style.display = 'block';
+      }
+    } finally {
+      if (btn) btn.disabled = false;
+    }
   },
 
   async loadStats() {

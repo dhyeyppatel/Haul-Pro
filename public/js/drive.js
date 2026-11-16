@@ -907,7 +907,6 @@ const Drive = {
       <div class="folder-card"
            data-id="${folder.id}"
            draggable="${canManage}"
-           ondblclick="Drive.openFolder('${folder.id}')"
            onclick="Drive.onFolderClick(event, '${folder.id}')"
            oncontextmenu="Drive.showFolderContextMenu(event, '${folder.id}')"
            ondragover="Drive.onFolderDragOver(event)"
@@ -1098,7 +1097,7 @@ const Drive = {
           <div class="preview-backdrop-icon">
             ${getFileIcon(file.category, file.extension)}
           </div>
-          ${isImg ? `
+          ${isImg && file.hosted_url ? `
             <img class="file-card-img"
                  src="${file.hosted_url}"
                  alt=""

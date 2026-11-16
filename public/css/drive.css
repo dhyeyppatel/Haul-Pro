@@ -2282,6 +2282,340 @@ tr.selected .row-select-checkbox {
   border: 1px solid #ceead6;
 }
 
+/* Sidebar Bottom Quick Links (Desktop & Mobile Drawer) */
+.sidebar-footer-section {
+  margin-top: auto;
+  padding: 12px 10px 16px;
+  border-top: 1px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sidebar-action-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 8px 12px;
+  border: none;
+  background: transparent;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+  text-align: left;
+}
+
+.sidebar-action-item:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.sidebar-action-item.danger {
+  color: #d93025;
+}
+
+.sidebar-action-item.danger:hover {
+  background: rgba(217, 48, 37, 0.08);
+}
+
+.sidebar-item-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+}
+
+/* Apple Select Wrapper for Language */
+.apple-select-wrapper {
+  position: relative;
+}
+
+.apple-select {
+  appearance: none;
+  -webkit-appearance: none;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 6px 32px 6px 12px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.apple-select:focus {
+  border-color: var(--color-blue);
+  box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.15);
+}
+
+.apple-select-wrapper::after {
+  content: "";
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 0;
+  height: 0;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-top: 5px solid var(--text-secondary);
+  pointer-events: none;
+}
+
+/* Beginner Guide Cards */
+.guide-cards-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px 14px;
+}
+
+.guide-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 14px 16px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.guide-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+}
+
+.guide-card-icon-bubble {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: rgba(26, 115, 232, 0.08);
+  color: var(--color-blue);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.guide-card-icon-bubble svg {
+  stroke: var(--color-blue);
+}
+
+.guide-card-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.guide-card-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 4px 0;
+}
+
+.guide-card-desc {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.guide-card-desc strong {
+  color: var(--text-primary);
+}
+
+.guide-card-desc code {
+  background: var(--bg-secondary);
+  padding: 2px 5px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-family: SF Mono, Consolas, monospace;
+}
+
+/* FAQ Accordion */
+.faq-list {
+  display: flex;
+  flex-direction: column;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-primary);
+  margin: 10px 14px 14px;
+}
+
+.faq-item {
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.faq-item:last-child {
+  border-bottom: none;
+}
+
+.faq-question {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border: none;
+  background: transparent;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text-primary);
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.faq-question:hover {
+  background: var(--bg-hover);
+}
+
+.faq-chevron {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s ease;
+  color: var(--text-secondary);
+}
+
+.faq-item.active .faq-chevron {
+  transform: rotate(180deg);
+}
+
+.faq-answer {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.25s ease, padding 0.25s ease;
+  padding: 0 16px;
+  background: var(--bg-secondary);
+}
+
+.faq-item.active .faq-answer {
+  max-height: 200px;
+  padding: 12px 16px 16px;
+}
+
+.faq-answer p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.faq-answer strong {
+  color: var(--text-primary);
+}
+
+.faq-answer code {
+  background: rgba(0, 0, 0, 0.05);
+  padding: 2px 4px;
+  border-radius: 4px;
+  font-family: SF Mono, Consolas, monospace;
+  font-size: 12px;
+}
+
+/* Legal Segmented Navigation & Prose */
+.legal-nav-segmented {
+  display: flex;
+  background: var(--bg-secondary);
+  border-radius: 8px;
+  padding: 3px;
+  margin: 12px 16px;
+  gap: 4px;
+}
+
+.legal-seg-btn {
+  flex: 1;
+  padding: 6px 12px;
+  font-size: 13px;
+  font-weight: 500;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, box-shadow 0.15s;
+}
+
+.legal-seg-btn.active {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  font-weight: 600;
+}
+
+.legal-prose {
+  padding: 14px 18px 20px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.legal-prose h4 {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 16px 0 6px 0;
+}
+
+.legal-prose h4:first-child {
+  margin-top: 0;
+}
+
+.legal-prose p {
+  margin: 0 0 10px 0;
+}
+
+.legal-prose ul {
+  margin: 0 0 12px 18px;
+  padding: 0;
+}
+
+.legal-prose li {
+  margin-bottom: 4px;
+}
+
+.legal-prose code {
+  background: var(--bg-secondary);
+  padding: 2px 5px;
+  border-radius: 4px;
+  font-family: SF Mono, Consolas, monospace;
+}
+
+/* Danger Zone & Delete Account */
+.danger-group {
+  border-color: rgba(217, 48, 37, 0.25) !important;
+}
+
+.danger-header {
+  color: #d93025 !important;
+}
+
+.danger-title {
+  color: #d93025 !important;
+}
+
+.danger-icon-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+}
+
+.danger-icon-container svg {
+  stroke: #d93025;
+}
+
 /* ==========================================
    MOBILE RESPONSIVENESS & APPLE iOS DESIGN
    ========================================== */

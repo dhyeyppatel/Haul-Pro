@@ -172,6 +172,22 @@
         </div>
         <div id="storage-text" class="storage-text">0 B of 15 GB used</div>
       </div>
+
+      <!-- Sidebar Quick Links (Desktop & Mobile Drawer) -->
+      <div class="sidebar-footer-section">
+        <button type="button" class="sidebar-action-item" id="sidebar-guide-btn" onclick="Settings.open('guide')">
+          <span class="sidebar-item-icon" id="sidebar-guide-icon"></span>
+          <span data-i18n="guide">Guide & Help</span>
+        </button>
+        <button type="button" class="sidebar-action-item" id="sidebar-settings-btn" onclick="Settings.open('general')">
+          <span class="sidebar-item-icon" id="sidebar-settings-icon"></span>
+          <span data-i18n="settings">Settings</span>
+        </button>
+        <button type="button" class="sidebar-action-item danger" id="sidebar-logout-btn" onclick="Auth.handleLogout()">
+          <span class="sidebar-item-icon" id="sidebar-logout-icon"></span>
+          <span data-i18n="signout">Sign Out</span>
+        </button>
+      </div>
     </aside>
 
     <!-- MAIN CONTENT EXPLORER -->
@@ -537,19 +553,31 @@
       <div class="settings-nav-bar">
         <button type="button" class="settings-nav-item active" data-tab="general">
           <span id="settings-nav-general-icon"></span>
-          <span>General</span>
+          <span data-i18n="general">General</span>
+        </button>
+        <button type="button" class="settings-nav-item" data-tab="guide">
+          <span id="settings-nav-guide-icon"></span>
+          <span data-i18n="guide">Guide</span>
+        </button>
+        <button type="button" class="settings-nav-item" data-tab="help">
+          <span id="settings-nav-help-icon"></span>
+          <span data-i18n="help">Help</span>
         </button>
         <button type="button" class="settings-nav-item" data-tab="storage">
           <span id="settings-nav-storage-icon"></span>
-          <span>Storage</span>
+          <span data-i18n="storage">Storage</span>
         </button>
         <button type="button" class="settings-nav-item" data-tab="security">
           <span id="settings-nav-security-icon"></span>
-          <span>Security</span>
+          <span data-i18n="security">Security</span>
         </button>
         <button type="button" class="settings-nav-item" data-tab="developer">
           <span id="settings-nav-dev-icon"></span>
-          <span>Developer API</span>
+          <span>API</span>
+        </button>
+        <button type="button" class="settings-nav-item" data-tab="legal">
+          <span id="settings-nav-legal-icon"></span>
+          <span data-i18n="legal">Legal</span>
         </button>
       </div>
 
@@ -560,8 +588,8 @@
             <div class="apple-group-header">PREFERENCES</div>
             <div class="apple-cell">
               <div class="apple-cell-info">
-                <div class="apple-cell-title">Default Layout</div>
-                <div class="apple-cell-sub">Choose how your files are displayed by default</div>
+                <div class="apple-cell-title" data-i18n="default_layout">Default Layout</div>
+                <div class="apple-cell-sub" data-i18n="default_layout_sub">Choose how your files are displayed by default</div>
               </div>
               <div class="apple-segmented-control" id="pref-view-segmented">
                 <button type="button" class="apple-segmented-btn active" data-value="grid">Grid</button>
@@ -570,8 +598,8 @@
             </div>
             <div class="apple-cell">
               <div class="apple-cell-info">
-                <div class="apple-cell-title">Default Upload Visibility</div>
-                <div class="apple-cell-sub">Uploaded files will be private unless you publish them</div>
+                <div class="apple-cell-title" data-i18n="default_vis">Default Upload Visibility</div>
+                <div class="apple-cell-sub" data-i18n="default_vis_sub">Uploaded files will be private unless you publish them</div>
               </div>
               <div class="apple-segmented-control" id="pref-vis-segmented">
                 <button type="button" class="apple-segmented-btn active" data-value="private">Private</button>
@@ -580,13 +608,146 @@
             </div>
             <div class="apple-cell">
               <div class="apple-cell-info">
-                <div class="apple-cell-title">Auto-Copy Link</div>
-                <div class="apple-cell-sub">Automatically copy direct media link to clipboard upon upload</div>
+                <div class="apple-cell-title" data-i18n="autocopy">Auto-Copy Link</div>
+                <div class="apple-cell-sub" data-i18n="autocopy_sub">Automatically copy direct media link to clipboard upon upload</div>
               </div>
               <label class="apple-toggle">
                 <input type="checkbox" id="pref-autocopy-toggle">
                 <span class="apple-toggle-slider"></span>
               </label>
+            </div>
+            <div class="apple-cell">
+              <div class="apple-cell-info">
+                <div class="apple-cell-title" data-i18n="language">Display Language</div>
+                <div class="apple-cell-sub" data-i18n="language_sub">Choose interface display language</div>
+              </div>
+              <div class="apple-select-wrapper">
+                <select id="pref-language-select" class="apple-select">
+                  <option value="en">English (US)</option>
+                  <option value="es">Español (Spanish)</option>
+                  <option value="fr">Français (French)</option>
+                  <option value="de">Deutsch (German)</option>
+                  <option value="hi">हिन्दी (Hindi)</option>
+                  <option value="ja">日本語 (Japanese)</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB: BEGINNER GUIDE -->
+        <div id="settings-tab-guide" class="settings-tab-pane">
+          <div class="apple-group">
+            <div class="apple-group-header">BEGINNER'S GUIDE & OVERVIEW</div>
+            
+            <div class="guide-cards-container">
+              <div class="guide-card">
+                <div class="guide-card-icon-bubble" id="guide-step1-icon"></div>
+                <div class="guide-card-content">
+                  <h4 class="guide-card-title">1. Upload Anything Without Limits</h4>
+                  <p class="guide-card-desc">Click <strong>+ New</strong> or drag and drop files anywhere. Upload photos, 4K videos, audio tracks, PDFs, archives, or code files. All files are preserved in original lossless quality.</p>
+                </div>
+              </div>
+
+              <div class="guide-card">
+                <div class="guide-card-icon-bubble" id="guide-step2-icon"></div>
+                <div class="guide-card-content">
+                  <h4 class="guide-card-title">2. Folders & Effortless Organization</h4>
+                  <p class="guide-card-desc">Create folders to organize your collection. Drag and drop items into folders or click the 3-dots menu to move files between folders. Nested folders are fully supported.</p>
+                </div>
+              </div>
+
+              <div class="guide-card">
+                <div class="guide-card-icon-bubble" id="guide-step3-icon"></div>
+                <div class="guide-card-content">
+                  <h4 class="guide-card-title">3. Private by Default with Public Sharing</h4>
+                  <p class="guide-card-desc">Every uploaded file is strictly <strong>Private</strong> by default. When you are ready to publish, click the badge or 3-dots menu to switch to <strong>Public</strong>. Public items appear on your profile.</p>
+                </div>
+              </div>
+
+              <div class="guide-card">
+                <div class="guide-card-icon-bubble" id="guide-step4-icon"></div>
+                <div class="guide-card-content">
+                  <h4 class="guide-card-title">4. Personalized Public Profile Showcase</h4>
+                  <p class="guide-card-desc">Your unique link (e.g. <code>shelfie.dhyey.cc/yourname</code>) serves as your link-in-bio showcase. Customize your profile photo, display name, and bio to present your portfolio to anyone.</p>
+                </div>
+              </div>
+
+              <div class="guide-card">
+                <div class="guide-card-icon-bubble" id="guide-step5-icon"></div>
+                <div class="guide-card-content">
+                  <h4 class="guide-card-title">5. Lightning-Fast CDN Direct Links</h4>
+                  <p class="guide-card-desc">Every file comes with a direct CDN URL powered by Telegram Cloud & Cloudflare Edge. Perfect for embedding in Discord, GitHub READMEs, websites, and forums.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB: HELP CENTER & FAQS -->
+        <div id="settings-tab-help" class="settings-tab-pane">
+          <div class="apple-group">
+            <div class="apple-group-header">FREQUENTLY ASKED QUESTIONS</div>
+            <div class="faq-list">
+              <div class="faq-item">
+                <button type="button" class="faq-question">
+                  <span>What file formats and sizes are supported?</span>
+                  <span class="faq-chevron"></span>
+                </button>
+                <div class="faq-answer">
+                  <p>Haul Pro supports all media formats: images (JPG, PNG, WEBP, GIF, SVG), videos (MP4, MKV, MOV, WEBM), audio (MP3, WAV, FLAC, AAC), documents (PDF, DOCX, TXT, MD), archives (ZIP, RAR, 7Z, TAR), and code (JS, PY, HTML, CSS, JSON). Individual files up to 2 GB are supported.</p>
+                </div>
+              </div>
+
+              <div class="faq-item">
+                <button type="button" class="faq-question">
+                  <span>How does Private vs. Public visibility work?</span>
+                  <span class="faq-chevron"></span>
+                </button>
+                <div class="faq-answer">
+                  <p>Files marked <strong>Private</strong> can only be accessed while signed in to your account. Files marked <strong>Public</strong> are visible to visitors on your public showcase page (<code>shelfie.dhyey.cc/username</code>) and can be downloaded or viewed without an account.</p>
+                </div>
+              </div>
+
+              <div class="faq-item">
+                <button type="button" class="faq-question">
+                  <span>How do I share a folder with another user?</span>
+                  <span class="faq-chevron"></span>
+                </button>
+                <div class="faq-answer">
+                  <p>Right-click (or tap the 3 dots) on any folder and select <strong>Make Public</strong>. You can then copy the folder's direct link to share with anyone. Anyone with the link can browse and download files inside it.</p>
+                </div>
+              </div>
+
+              <div class="faq-item">
+                <button type="button" class="faq-question">
+                  <span>How do I edit my public profile picture and bio?</span>
+                  <span class="faq-chevron"></span>
+                </button>
+                <div class="faq-answer">
+                  <p>Click your avatar in the top-right corner to visit your public profile. Click <strong>Edit Profile</strong> to change your name, handle, and bio, or click the camera icon on your avatar to upload a profile photo.</p>
+                </div>
+              </div>
+
+              <div class="faq-item">
+                <button type="button" class="faq-question">
+                  <span>How does Haul Pro store and deliver files?</span>
+                  <span class="faq-chevron"></span>
+                </button>
+                <div class="faq-answer">
+                  <p>Haul Pro uses the CommonThread hybrid engine. Files are securely chunked and hosted across high-availability Telegram Cloud storage backends accelerated by Cloudflare R2 Edge workers for global sub-second delivery.</p>
+                </div>
+              </div>
+
+              <div class="faq-item">
+                <button type="button" class="faq-question">
+                  <span>Can I use Haul Pro with desktop tools like ShareX?</span>
+                  <span class="faq-chevron"></span>
+                </button>
+                <div class="faq-answer">
+                  <p>Yes! Navigate to the <strong>Developer API</strong> tab in Settings to copy your personal API key and the standard drop-in <code>/api/1/upload</code> endpoint for ShareX, cURL, or custom upload scripts.</p>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -629,7 +790,7 @@
           </div>
         </div>
 
-        <!-- TAB 3: SECURITY -->
+        <!-- TAB 3: SECURITY & ACCOUNT MANAGEMENT -->
         <div id="settings-tab-security" class="settings-tab-pane">
           <form id="change-password-form">
             <div class="apple-group">
@@ -653,6 +814,28 @@
               <button type="submit" class="btn-filled" id="save-password-btn">Update Password</button>
             </div>
           </form>
+
+          <div class="apple-group" style="margin-top: 16px;">
+            <div class="apple-group-header">SESSION & SECURITY</div>
+            <div class="apple-cell">
+              <div class="apple-cell-info">
+                <div class="apple-cell-title">Sign Out of Account</div>
+                <div class="apple-cell-sub">End this active session on this device</div>
+              </div>
+              <button type="button" class="apple-btn-secondary" onclick="Auth.handleLogout()">Sign Out</button>
+            </div>
+          </div>
+
+          <div class="apple-group danger-group" style="margin-top: 16px;">
+            <div class="apple-group-header danger-header">DANGER ZONE</div>
+            <div class="apple-cell">
+              <div class="apple-cell-info">
+                <div class="apple-cell-title danger-title">Delete Account</div>
+                <div class="apple-cell-sub">Permanently delete your profile, credentials, and purge all files from CommonThread cloud storage.</div>
+              </div>
+              <button type="button" class="apple-btn-danger" id="open-delete-account-btn" onclick="Settings.openDeleteModal()">Delete Account</button>
+            </div>
+          </div>
         </div>
 
         <!-- TAB 4: DEVELOPER API -->
@@ -688,6 +871,100 @@
             </div>
           </div>
         </div>
+
+        <!-- TAB: LEGAL, PRIVACY POLICY & TERMS -->
+        <div id="settings-tab-legal" class="settings-tab-pane">
+          <div class="legal-nav-segmented">
+            <button type="button" class="legal-seg-btn active" data-legal="privacy" onclick="Settings.switchLegalDoc('privacy')">Privacy Policy</button>
+            <button type="button" class="legal-seg-btn" data-legal="terms" onclick="Settings.switchLegalDoc('terms')">Terms of Service</button>
+          </div>
+
+          <!-- Privacy Policy Document -->
+          <div id="legal-doc-privacy" class="legal-doc-content active">
+            <div class="apple-group">
+              <div class="apple-group-header">APPLE-INSPIRED TRANSPARENT PRIVACY POLICY</div>
+              <div class="legal-prose">
+                <h4>1. Our Fundamental Privacy Commitment</h4>
+                <p>At Haul Pro, privacy is not an afterthought; it is our foundation. We believe that your digital content belongs exclusively to you. We do not track your internet browsing, sell your personal data to advertisers, or monetize your activity.</p>
+
+                <h4>2. Zero Third-Party Advertising Trackers</h4>
+                <p>We do not embed third-party tracking pixels, marketing beacons, or surveillance cookies. The only cookies we store are strictly essential, cryptographically signed HTTP-only session tokens (<code>auth_token</code>) required to keep you securely signed in.</p>
+
+                <h4>3. Full Ownership of Your Content</h4>
+                <p>You retain 100% intellectual property ownership of all images, videos, audio, documents, and code uploaded to your account. We never claim any license or ownership over your content.</p>
+
+                <h4>4. Robust Cloud Isolation & Encryption</h4>
+                <p>All data transmissions between your browser and our edge servers are protected with TLS 1.3 encryption. Private files are shielded with session authorization: unauthorized requests are rejected at the edge.</p>
+
+                <h4>5. Absolute Right to Permanent Deletion (GDPR & CCPA)</h4>
+                <p>You maintain complete control over your data. When you delete a file or empty your Trash, our system dispatches a purge command to our storage engine. When you delete your account, your user record, folders, metadata, and all stored media are permanently purged from all databases and storage nodes.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Terms of Service Document -->
+          <div id="legal-doc-terms" class="legal-doc-content" style="display: none;">
+            <div class="apple-group">
+              <div class="apple-group-header">TERMS OF SERVICE & ACCEPTABLE USE</div>
+              <div class="legal-prose">
+                <h4>1. Acceptance of Terms</h4>
+                <p>By registering for or using Haul Pro ("Shelfie"), you agree to abide by these Terms of Service. If you do not agree with any provision of these terms, you may terminate your account at any time.</p>
+
+                <h4>2. Permitted & Fair Use</h4>
+                <p>Haul Pro provides universal cloud media storage and content hosting for creators, developers, designers, and students. Standard free tier accounts receive up to 15 GB of high-speed cloud storage quota.</p>
+
+                <h4>3. Acceptable Use Policy</h4>
+                <p>You agree not to upload, store, or distribute:</p>
+                <ul>
+                  <li>Malicious code, computer viruses, trojans, ransomware, or spyware.</li>
+                  <li>Phishing pages or credentials-harvesting artifacts.</li>
+                  <li>Unlawful, non-consensual, or abusive material.</li>
+                  <li>Materials that violate intellectual property or copyright laws (DMCA).</li>
+                </ul>
+
+                <h4>4. Storage Engine Architecture & Service Level</h4>
+                <p>Haul Pro utilizes distributed cloud architecture to achieve high reliability. While we take extensive precautions to prevent loss, users are encouraged to maintain local backups of mission-critical materials.</p>
+
+                <h4>5. Account Termination</h4>
+                <p>We reserve the right to suspend accounts that systematically violate our acceptable use policy. You may voluntarily delete your account at any time via the Security settings panel.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DELETE ACCOUNT CONFIRMATION MODAL -->
+  <div id="delete-account-modal" class="modal-backdrop" style="display: none;">
+    <div class="modal-card apple-modal delete-account-card" style="max-width: 440px;">
+      <div class="modal-header apple-modal-header">
+        <div class="settings-header-left">
+          <span id="delete-modal-warn-icon" class="danger-icon-container"></span>
+          <h3 class="modal-title" style="color: #d93025;">Delete Account Permanently</h3>
+        </div>
+        <button type="button" class="icon-btn apple-close-btn" id="delete-acc-close-btn" onclick="Settings.closeDeleteModal()">
+          <span id="delete-acc-close-icon"></span>
+        </button>
+      </div>
+      <div class="modal-body" style="padding: 20px 24px;">
+        <p style="font-size: 14px; color: var(--text-secondary); line-height: 1.5; margin-bottom: 16px;">
+          Are you sure you want to delete your Haul Pro account? This action is <strong>permanent and irreversible</strong>. All your files, folders, and profile details will be immediately purged.
+        </p>
+        <form id="delete-account-confirm-form" onsubmit="Settings.handleDeleteAccountConfirm(event)">
+          <div class="apple-input-row" style="margin-bottom: 12px;">
+            <label style="font-size: 13px; font-weight: 500; margin-bottom: 6px; display: block;">Enter Your Password to Confirm</label>
+            <input type="password" id="delete-acc-password" placeholder="Account password" required style="width: 100%; padding: 10px 12px; border: 1px solid var(--border-color); border-radius: 8px; font-size: 14px;">
+          </div>
+          <div id="delete-acc-error" class="modal-error" style="display: none; margin-bottom: 12px;"></div>
+          <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
+            <button type="button" class="btn-text" onclick="Settings.closeDeleteModal()">Cancel</button>
+            <button type="submit" class="apple-btn-danger" id="confirm-delete-acc-btn">Permanently Delete</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
       </div>
     </div>
   </div>
@@ -802,12 +1079,49 @@
 
       const setNavGen = document.getElementById('settings-nav-general-icon');
       if (setNavGen) setNavGen.innerHTML = Icons.sliders;
+      const setNavGuide = document.getElementById('settings-nav-guide-icon');
+      if (setNavGuide) setNavGuide.innerHTML = Icons.book_open;
+      const setNavHelp = document.getElementById('settings-nav-help-icon');
+      if (setNavHelp) setNavHelp.innerHTML = Icons.help;
       const setNavStor = document.getElementById('settings-nav-storage-icon');
       if (setNavStor) setNavStor.innerHTML = Icons.storage_drive;
       const setNavSec = document.getElementById('settings-nav-security-icon');
       if (setNavSec) setNavSec.innerHTML = Icons.shield;
       const setNavDev = document.getElementById('settings-nav-dev-icon');
       if (setNavDev) setNavDev.innerHTML = Icons.key;
+      const setNavLegal = document.getElementById('settings-nav-legal-icon');
+      if (setNavLegal) setNavLegal.innerHTML = Icons.file_text;
+
+      // Sidebar Quick Links Icons
+      const sideGuide = document.getElementById('sidebar-guide-icon');
+      if (sideGuide) sideGuide.innerHTML = Icons.book_open;
+      const sideSet = document.getElementById('sidebar-settings-icon');
+      if (sideSet) sideSet.innerHTML = Icons.settings;
+      const sideLogout = document.getElementById('sidebar-logout-icon');
+      if (sideLogout) sideLogout.innerHTML = Icons.logout;
+
+      // Guide Step Icons
+      const g1 = document.getElementById('guide-step1-icon');
+      if (g1) g1.innerHTML = Icons.upload_cloud;
+      const g2 = document.getElementById('guide-step2-icon');
+      if (g2) g2.innerHTML = Icons.folder;
+      const g3 = document.getElementById('guide-step3-icon');
+      if (g3) g3.innerHTML = Icons.lock;
+      const g4 = document.getElementById('guide-step4-icon');
+      if (g4) g4.innerHTML = Icons.user;
+      const g5 = document.getElementById('guide-step5-icon');
+      if (g5) g5.innerHTML = Icons.link;
+
+      // Delete Modal Icons
+      const delWarn = document.getElementById('delete-modal-warn-icon');
+      if (delWarn) delWarn.innerHTML = Icons.alert_triangle;
+      const delClose = document.getElementById('delete-acc-close-icon');
+      if (delClose) delClose.innerHTML = Icons.close;
+
+      // FAQ chevrons
+      document.querySelectorAll('.faq-chevron').forEach(el => {
+        el.innerHTML = Icons.chevron_down;
+      });
 
       const mobDrive = document.getElementById('mob-nav-drive-icon');
       if (mobDrive) mobDrive.innerHTML = Icons.folder;

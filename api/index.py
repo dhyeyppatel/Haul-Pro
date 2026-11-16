@@ -8,6 +8,7 @@ from pymongo import MongoClient
 import bcrypt
 import jwt
 import requests
+from werkzeug.exceptions import HTTPException
 from dotenv import load_dotenv
 
 # Load environment
@@ -23,6 +24,8 @@ CORS(app, supports_credentials=True)
 
 @app.errorhandler(Exception)
 def handle_exception(e):
+    if isinstance(e, HTTPException):
+        return jsonify({"success": False, "error": e.description}), e.code
     print("Unhandled Server Exception:", e)
     return jsonify({"success": False, "error": str(e)}), 500
 
@@ -442,6 +445,45 @@ def change_password():
     new_hash = bcrypt.hashpw(new_password.encode("utf-8"), salt).decode("utf-8")
     database.users.update_one({"_id": user_id}, {"$set": {"password_hash": new_hash, "updated_at": datetime.datetime.utcnow()}})
     return jsonify({"success": True, "message": "Password updated successfully."})
+
+@app.route("/api/auth/delete-account", methods=["POST"])
+def delete_account():
+    auth_user = authenticate()
+    if not auth_user:
+        return jsonify({"success": False, "error": "Unauthorized"}), 401
+
+    data = request.get_json() or {}
+    password = data.get("password") or ""
+    if not password:
+        return jsonify({"success": False, "error": "Password confirmation is required to delete your account."}), 400
+
+    database = get_db()
+    user_id = ObjectId(auth_user["id"])
+    user = database.users.find_one({"_id": user_id})
+    if not user:
+        return jsonify({"success": False, "error": "User not found"}), 404
+
+    if not bcrypt.checkpw(password.encode("utf-8"), user["password_hash"].encode("utf-8")):
+        return jsonify({"success": False, "error": "Incorrect password. Account deletion aborted."}), 400
+
+    # Purge all files on media engine if delete_token exists
+    all_files = list(database.files.find({"user_id": user_id}))
+    for f in all_files:
+        if f.get("delete_token"):
+            try:
+                requests.post(f"{MEDIA_HOST_URL}/delete/{f['delete_token']}", timeout=3)
+            except Exception:
+                pass
+
+    # Delete all database records for this user
+    database.files.delete_many({"user_id": user_id})
+    database.folders.delete_many({"user_id": user_id})
+    database.users.delete_one({"_id": user_id})
+
+    # Clear auth cookie
+    resp = jsonify({"success": True, "message": "Account and all associated files deleted successfully."})
+    resp.set_cookie("auth_token", "", expires=0, httponly=True, samesite="Lax")
+    return resp
 
 @app.route("/api/user/storage-stats", methods=["GET"])
 def get_storage_stats():
@@ -1070,6 +1112,7 @@ def bulk_delete_files():
 # ==========================================
 
 @app.route("/api/public/<username>", methods=["GET"])
+@app.route("/api/public/profile/<username>", methods=["GET"])
 def get_public_profile(username):
     uname = (username or "").strip().lower()
     database = get_db()
