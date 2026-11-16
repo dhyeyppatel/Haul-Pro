@@ -247,7 +247,7 @@ const Drive = {
   renderFileCard(file) {
     const isImg = file.category === 'image';
     const previewContent = isImg
-      ? `<img class="file-card-img" src="${file.hosted_url}" alt="${file.name}" loading="lazy" />`
+      ? `<img class="file-card-img" src="${file.hosted_url}" alt="${file.name}" loading="lazy" onerror="this.style.display='none'; if(this.nextElementSibling) this.nextElementSibling.style.display='flex';" /><div class="file-fallback-icon" style="display:none; width:100%; height:100%; align-items:center; justify-content:center;">${getFileIcon(file.category, file.extension)}</div>`
       : getFileIcon(file.category, file.extension);
 
     return `
