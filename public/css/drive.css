@@ -927,111 +927,203 @@ body {
 }
 
 /* ==========================================
-   PUBLIC PROFILE BANNER & OWNER BAR
+   INSTAGRAM-STYLE PROFILE CARD & TABS (Matches user sketch)
    ========================================== */
-.public-profile-banner {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 18px 24px;
-  background: #f8fafd;
-  border: 1px solid var(--border-subtle);
+.instagram-profile-card {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
   border-radius: 16px;
-  margin-bottom: 16px;
-  box-shadow: 0 1px 3px rgba(60,64,67,0.06);
+  margin-bottom: 20px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(60,64,67,0.08);
 }
 
-.public-profile-info {
+.insta-profile-header {
   display: flex;
-  align-items: center;
-  gap: 16px;
+  align-items: flex-start;
+  gap: 28px;
+  padding: 24px 28px;
 }
 
-.public-profile-avatar {
-  width: 52px;
-  height: 52px;
+.insta-avatar-container {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.insta-profile-avatar {
+  width: 88px;
+  height: 88px;
   border-radius: 50%;
   background: var(--color-blue);
   color: white;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 22px;
+  font-size: 34px;
   font-weight: 600;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.12);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+  overflow: hidden;
+  position: relative;
 }
 
-.public-profile-name-row {
+.insta-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.insta-avatar-change-btn {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 1px solid var(--border-color);
+  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
   display: flex;
   align-items: center;
-  gap: 10px;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--text-primary);
+  transition: transform 0.15s, background 0.15s;
 }
 
-.public-profile-name {
-  font-size: 20px;
+.insta-avatar-change-btn:hover {
+  background: var(--bg-hover);
+  transform: scale(1.08);
+}
+
+.insta-meta-container {
+  flex: 1;
+  min-width: 0;
+}
+
+.insta-name-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.insta-profile-name {
+  font-size: 22px;
   font-weight: 600;
   color: var(--text-primary);
 }
 
-.public-profile-badge {
-  font-size: 11px;
-  background: #e8f0fe;
-  color: var(--color-blue);
-  padding: 3px 8px;
-  border-radius: 12px;
-  font-weight: 600;
-  letter-spacing: 0.3px;
-  text-transform: uppercase;
-}
-
-.public-profile-sub {
-  font-size: 13px;
-  color: var(--text-secondary);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 4px;
-}
-
-.public-profile-username {
+.insta-profile-handle {
+  font-size: 14px;
   font-weight: 500;
   color: var(--color-blue);
+  background: #e8f0fe;
+  padding: 3px 10px;
+  border-radius: 12px;
 }
 
-.public-profile-actions {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.profile-action-btn {
+.insta-edit-profile-btn {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 16px;
-  border-radius: 20px;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-primary);
   font-size: 13px;
   font-weight: 500;
-  border: 1px solid var(--border-color);
-  background: white;
   color: var(--text-primary);
   cursor: pointer;
   transition: all 0.15s;
+  margin-left: 8px;
 }
 
-.profile-action-btn:hover {
+.insta-edit-profile-btn:hover {
   background: var(--bg-hover);
   border-color: #b8bdc2;
 }
 
-.profile-action-btn.primary {
-  background: var(--color-blue);
-  color: white;
-  border-color: var(--color-blue);
+.insta-profile-bio {
+  font-size: 14px;
+  color: var(--text-primary);
+  margin-top: 10px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  max-width: 600px;
 }
 
-.profile-action-btn.primary:hover {
-  background: var(--color-blue-hover);
+.insta-profile-bio.empty-bio {
+  color: var(--text-disabled);
+  font-style: italic;
+}
+
+.insta-actions-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 14px;
+  flex-wrap: wrap;
+}
+
+.insta-stat-pill {
+  font-size: 13px;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+/* WIREFRAME SEGMENTED TAB BAR: [ PRIVATE | PUBLIC ] */
+.insta-tabs-bar {
+  display: flex;
+  border-top: 1px solid var(--border-subtle);
+  background: var(--bg-surface);
+}
+
+.insta-tab-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px 16px;
+  background: transparent;
+  border: none;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.8px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s;
+  text-transform: uppercase;
+}
+
+.insta-tab-btn:first-child {
+  border-right: 1px solid var(--border-subtle);
+}
+
+.insta-tab-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.insta-tab-btn.active {
+  color: var(--color-blue);
+  background: var(--bg-primary);
+  border-bottom: 2px solid var(--color-blue);
+}
+
+.tab-badge {
+  font-size: 11px;
+  background: #e8eaed;
+  color: var(--text-secondary);
+  padding: 2px 7px;
+  border-radius: 10px;
+  font-weight: 500;
+}
+
+.insta-tab-btn.active .tab-badge {
+  background: #e8f0fe;
+  color: var(--color-blue);
 }
 
 .owner-mode-bar {
@@ -1155,6 +1247,184 @@ body {
 
 .toast-item.error {
   background: #d93025;
+}
+
+/* ==========================================
+   EDIT PROFILE MODAL & AVATAR STYLES (Instagram Style)
+   ========================================== */
+.user-avatar-topbar-img {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.dropdown-avatar-img {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.profile-dropdown-bio {
+  font-size: 12px;
+  color: var(--text-secondary);
+  text-align: center;
+  margin: 6px 12px 0 12px;
+  line-height: 1.4;
+  max-height: 38px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.edit-profile-photo-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 16px;
+  background: var(--bg-surface);
+  border-radius: 12px;
+  margin-bottom: 20px;
+}
+
+.edit-photo-preview-wrap {
+  position: relative;
+  width: 58px;
+  height: 58px;
+  flex-shrink: 0;
+}
+
+.edit-modal-avatar {
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  font-size: 24px;
+}
+
+.change-photo-badge {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--color-blue);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.25);
+  transition: transform 0.15s;
+}
+
+.change-photo-badge:hover {
+  transform: scale(1.1);
+}
+
+.edit-photo-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.edit-photo-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.change-photo-link {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-blue);
+  cursor: pointer;
+  transition: color 0.15s;
+}
+
+.change-photo-link:hover {
+  color: var(--color-blue-hover);
+  text-decoration: underline;
+}
+
+.edit-profile-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.modal-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.modal-field-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.modal-username-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.username-prefix {
+  position: absolute;
+  left: 12px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  pointer-events: none;
+}
+
+.modal-input.with-prefix {
+  padding-left: 28px;
+}
+
+.field-hint {
+  font-size: 11px;
+  color: var(--text-disabled);
+  margin-top: 2px;
+}
+
+.modal-textarea {
+  width: 100%;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 14px;
+  outline: none;
+  font-family: inherit;
+  resize: vertical;
+  color: var(--text-primary);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.modal-textarea:focus {
+  border-color: var(--color-blue);
+  box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.15);
+}
+
+.bio-counter {
+  font-size: 11px;
+  color: var(--text-secondary);
+  text-align: right;
+  margin-top: 2px;
+}
+
+.modal-error {
+  background: #fce8e6;
+  color: #c5221f;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  border: 1px solid #fad2cf;
 }
 
 @keyframes fadeIn {

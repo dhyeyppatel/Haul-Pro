@@ -174,6 +174,8 @@ def register():
             "email": email,
             "password_hash": password_hash,
             "avatar_color": avatar_color,
+            "avatar_url": None,
+            "bio": "",
             "storage_used_bytes": 0,
             "storage_limit_bytes": 15 * 1024 * 1024 * 1024,  # 15 GB
             "created_at": now,
@@ -191,6 +193,8 @@ def register():
                 "name": name,
                 "username": username,
                 "email": email,
+                "bio": "",
+                "avatar_url": "",
                 "avatar_color": avatar_color,
                 "storage_used_bytes": 0,
                 "storage_limit_bytes": user_doc["storage_limit_bytes"]
@@ -240,6 +244,8 @@ def login():
                 "name": user["name"],
                 "username": username,
                 "email": user["email"],
+                "bio": user.get("bio", ""),
+                "avatar_url": user.get("avatar_url", ""),
                 "avatar_color": user.get("avatar_color", "#1a73e8"),
                 "storage_used_bytes": user.get("storage_used_bytes", 0),
                 "storage_limit_bytes": user.get("storage_limit_bytes", 15 * 1024 * 1024 * 1024)
@@ -280,6 +286,127 @@ def get_me():
             "name": user["name"],
             "username": username,
             "email": user["email"],
+            "bio": user.get("bio", ""),
+            "avatar_url": user.get("avatar_url", ""),
+            "avatar_color": user.get("avatar_color", "#1a73e8"),
+            "storage_used_bytes": user.get("storage_used_bytes", 0),
+            "storage_limit_bytes": user.get("storage_limit_bytes", 15 * 1024 * 1024 * 1024)
+        }
+    })
+
+@app.route("/api/auth/profile", methods=["PATCH"])
+def update_profile():
+    auth_user = authenticate()
+    if not auth_user:
+        return jsonify({"success": False, "error": "Unauthorized"}), 401
+
+    data = request.get_json() or {}
+    database = get_db()
+    user_id = ObjectId(auth_user["id"])
+
+    updates = {}
+    if "name" in data:
+        name = (data["name"] or "").strip()
+        if not name:
+            return jsonify({"success": False, "error": "Name cannot be empty."}), 400
+        updates["name"] = name
+
+    if "username" in data:
+        raw_uname = (data["username"] or "").strip().lower()
+        clean_uname = re.sub(r'[^a-z0-9_-]', '', raw_uname)
+        if len(clean_uname) < 2 or len(clean_uname) > 30:
+            return jsonify({"success": False, "error": "Username must be between 2 and 30 characters (alphanumeric, underscores, hyphens)."}), 400
+        
+        # Check uniqueness if changed
+        existing = database.users.find_one({"username": clean_uname, "_id": {"$ne": user_id}})
+        if existing:
+            return jsonify({"success": False, "error": f"Username '@{clean_uname}' is already taken. Please choose another."}), 400
+        updates["username"] = clean_uname
+
+    if "bio" in data:
+        bio = str(data["bio"] or "").strip()[:200]
+        updates["bio"] = bio
+
+    if "avatar_url" in data:
+        updates["avatar_url"] = str(data["avatar_url"] or "").strip()
+
+    if not updates:
+        return jsonify({"success": False, "error": "No updates provided."}), 400
+
+    updates["updated_at"] = datetime.datetime.utcnow()
+    user = database.users.find_one_and_update(
+        {"_id": user_id},
+        {"$set": updates},
+        return_document=True
+    )
+
+    return jsonify({
+        "success": True,
+        "message": "Profile updated successfully.",
+        "user": {
+            "id": str(user["_id"]),
+            "name": user["name"],
+            "username": user.get("username", ""),
+            "email": user["email"],
+            "bio": user.get("bio", ""),
+            "avatar_url": user.get("avatar_url", ""),
+            "avatar_color": user.get("avatar_color", "#1a73e8"),
+            "storage_used_bytes": user.get("storage_used_bytes", 0),
+            "storage_limit_bytes": user.get("storage_limit_bytes", 15 * 1024 * 1024 * 1024)
+        }
+    })
+
+@app.route("/api/auth/profile/avatar", methods=["POST"])
+def upload_avatar():
+    auth_user = authenticate()
+    if not auth_user:
+        return jsonify({"success": False, "error": "Unauthorized"}), 401
+
+    if "avatar" not in request.files:
+        return jsonify({"success": False, "error": "No avatar file provided."}), 400
+
+    avatar_file = request.files["avatar"]
+    if not avatar_file.filename:
+        return jsonify({"success": False, "error": "No file selected."}), 400
+
+    filename = avatar_file.filename
+    ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
+    if ext not in ("jpg", "jpeg", "png", "webp", "gif", "svg", "avif"):
+        return jsonify({"success": False, "error": "Profile picture must be an image (JPG, PNG, WEBP, GIF, SVG)."}), 400
+
+    file_bytes = avatar_file.read()
+    mime_type = avatar_file.mimetype or "image/jpeg"
+
+    try:
+        target_url = f"{MEDIA_HOST_URL}/api/upload"
+        files_payload = {"file": (filename, file_bytes, mime_type)}
+        headers = {"X-API-Key": HAUL_MEDIA_API_KEY}
+        resp = requests.post(target_url, headers=headers, files=files_payload, timeout=60)
+        if not resp.ok:
+            return jsonify({"success": False, "error": f"Upload rejected: {resp.text}"}), 502
+        res_json = resp.json()
+        hosted_url = res_json.get("url") or res_json.get("display_url")
+    except Exception as e:
+        return jsonify({"success": False, "error": f"Failed to upload avatar: {str(e)}"}), 502
+
+    database = get_db()
+    user_id = ObjectId(auth_user["id"])
+    database.users.update_one(
+        {"_id": user_id},
+        {"$set": {"avatar_url": hosted_url, "updated_at": datetime.datetime.utcnow()}}
+    )
+
+    user = database.users.find_one({"_id": user_id})
+    return jsonify({
+        "success": True,
+        "avatar_url": hosted_url,
+        "user": {
+            "id": str(user["_id"]),
+            "name": user["name"],
+            "username": user.get("username", ""),
+            "email": user["email"],
+            "bio": user.get("bio", ""),
+            "avatar_url": hosted_url,
             "avatar_color": user.get("avatar_color", "#1a73e8"),
             "storage_used_bytes": user.get("storage_used_bytes", 0),
             "storage_limit_bytes": user.get("storage_limit_bytes", 15 * 1024 * 1024 * 1024)
@@ -796,9 +923,16 @@ def get_public_profile(username):
     parent_param = request.args.get("parentId")
     parent_id = ObjectId(parent_param) if parent_param and parent_param not in ("root", "null") else None
 
+    # Tab handling: "public" vs "private" (Owner only can view private)
+    tab = (request.args.get("tab") or "public").lower()
+    if not is_owner or tab not in ("public", "private"):
+        tab = "public"
+
     # Folder query
     folder_query = {"user_id": user["_id"], "is_trashed": False, "parent_id": parent_id}
-    if not is_owner:
+    if tab == "private":
+        folder_query["is_public"] = False
+    else:
         folder_query["is_public"] = {"$ne": False}
 
     folders_cursor = database.folders.find(folder_query).sort("name", 1)
@@ -813,7 +947,9 @@ def get_public_profile(username):
     skip = (page - 1) * limit
 
     file_query = {"user_id": user["_id"], "is_trashed": False, "folder_id": parent_id}
-    if not is_owner:
+    if tab == "private":
+        file_query["is_public"] = False
+    else:
         file_query["is_public"] = {"$ne": False}
 
     category = request.args.get("category")
@@ -830,6 +966,9 @@ def get_public_profile(username):
     total_count = database.files.count_documents(file_query)
     files_cursor = database.files.find(file_query).sort("created_at", -1).skip(skip).limit(limit)
     files = [serialize_doc(f) for f in files_cursor]
+
+    total_public_count = database.files.count_documents({"user_id": user["_id"], "is_trashed": False, "is_public": {"$ne": False}})
+    total_private_count = database.files.count_documents({"user_id": user["_id"], "is_trashed": False, "is_public": False})
 
     breadcrumbs = [{"id": None, "name": f"{user['name']}'s Drive"}]
     if parent_id:
@@ -848,11 +987,15 @@ def get_public_profile(username):
         "profile": {
             "name": user["name"],
             "username": user.get("username", uname),
+            "bio": user.get("bio", ""),
+            "avatar_url": user.get("avatar_url", ""),
             "avatar_color": user.get("avatar_color", "#1a73e8"),
             "created_at": user.get("created_at").isoformat() if isinstance(user.get("created_at"), datetime.datetime) else None,
-            "total_public_files": total_count
+            "total_public_files": total_public_count,
+            "total_private_files": total_private_count
         },
         "is_owner": is_owner,
+        "tab": tab,
         "folders": folders,
         "files": files,
         "breadcrumbs": breadcrumbs,

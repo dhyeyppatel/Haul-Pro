@@ -45,6 +45,19 @@ const API = {
     return this.request('/api/auth/me');
   },
 
+  async updateProfile(updates) {
+    return this.request('/api/auth/profile', { method: 'PATCH', body: updates });
+  },
+
+  async uploadAvatar(file) {
+    const formData = new FormData();
+    formData.append('avatar', file);
+    return this.request('/api/auth/profile/avatar', {
+      method: 'POST',
+      body: formData
+    });
+  },
+
   // Folder APIs
   async getFolders(params = {}) {
     const query = new URLSearchParams(params).toString();

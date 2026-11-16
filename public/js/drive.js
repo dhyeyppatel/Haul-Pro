@@ -19,6 +19,7 @@ const Drive = {
   profileUsername: null,
   isOwnerMode: false,
   publicProfileData: null,
+  currentTab: 'public', // 'public' | 'private' (Matches Instagram wireframe)
 
   // Move Modal State
   moveTargetItem: null, // { id, type: 'file' | 'folder', name }
@@ -148,11 +149,34 @@ const Drive = {
         this.reload();
       });
     }
+
+    // Instagram-style [ PRIVATE | PUBLIC ] tab buttons
+    const tabPrivateBtn = document.getElementById('profile-tab-private');
+    const tabPublicBtn = document.getElementById('profile-tab-public');
+
+    if (tabPrivateBtn) {
+      tabPrivateBtn.addEventListener('click', () => {
+        if (this.currentTab === 'private') return;
+        this.currentTab = 'private';
+        this.page = 1;
+        this.currentFolderId = null;
+        this.loadPublicDrive();
+      });
+    }
+
+    if (tabPublicBtn) {
+      tabPublicBtn.addEventListener('click', () => {
+        if (this.currentTab === 'public') return;
+        this.currentTab = 'public';
+        this.page = 1;
+        this.currentFolderId = null;
+        this.loadPublicDrive();
+      });
+    }
   },
 
   bindModalEvents() {
     // New Folder Modal events
-    const newFolderModal = document.getElementById('new-folder-modal');
     const newFolderInput = document.getElementById('new-folder-input');
     const newFolderCreateBtn = document.getElementById('new-folder-create-btn');
     const newFolderCancelBtn = document.getElementById('new-folder-cancel-btn');
@@ -171,7 +195,6 @@ const Drive = {
     }
 
     // Move Modal events
-    const moveModal = document.getElementById('move-modal');
     const moveConfirmBtn = document.getElementById('move-confirm-btn');
     const moveCancelBtn = document.getElementById('move-cancel-btn');
     const moveCloseBtn = document.getElementById('move-modal-close-btn');
@@ -229,6 +252,7 @@ const Drive = {
       parentId: this.currentFolderId || 'root',
       category: this.currentCategory,
       search: this.searchQuery,
+      tab: this.currentTab,
       page: this.page,
       limit: 20
     };
@@ -238,21 +262,86 @@ const Drive = {
       this.publicProfileData = data;
       this.isOwnerMode = Boolean(data.is_owner);
 
-      // Render banner
+      // Render Instagram-style Profile Card
       if (banner && data.profile) {
-        banner.style.display = 'flex';
-        const avatarEl = document.getElementById('public-profile-avatar');
+        banner.style.display = 'block';
+
+        // Avatar: Image or Initials
+        const avatarInitial = document.getElementById('public-avatar-initial');
+        const avatarImg = document.getElementById('public-avatar-img');
+        const avatarWrap = document.getElementById('public-profile-avatar');
+        const initial = (data.profile.name || 'U').charAt(0).toUpperCase();
+
+        if (data.profile.avatar_url && avatarImg && avatarInitial) {
+          avatarImg.src = data.profile.avatar_url;
+          avatarImg.style.display = 'block';
+          avatarInitial.style.display = 'none';
+          if (avatarWrap) avatarWrap.style.backgroundColor = 'transparent';
+        } else if (avatarInitial && avatarImg) {
+          avatarImg.style.display = 'none';
+          avatarInitial.textContent = initial;
+          avatarInitial.style.display = 'block';
+          if (avatarWrap) avatarWrap.style.backgroundColor = data.profile.avatar_color || '#1a73e8';
+        }
+
+        // Name and Username
         const nameEl = document.getElementById('public-profile-name');
         const unameEl = document.getElementById('public-profile-username');
-        const countEl = document.getElementById('public-profile-file-count');
-
-        if (avatarEl) {
-          avatarEl.textContent = (data.profile.name || 'U').charAt(0).toUpperCase();
-          if (data.profile.avatar_color) avatarEl.style.backgroundColor = data.profile.avatar_color;
-        }
         if (nameEl) nameEl.textContent = data.profile.name;
         if (unameEl) unameEl.textContent = `@${data.profile.username}`;
-        if (countEl) countEl.textContent = `${data.total_count} public file${data.total_count === 1 ? '' : 's'}`;
+
+        // Small Bio (Wireframe feature)
+        const bioEl = document.getElementById('public-profile-bio');
+        if (bioEl) {
+          if (data.profile.bio) {
+            bioEl.textContent = data.profile.bio;
+            bioEl.style.display = 'block';
+            bioEl.classList.remove('empty-bio');
+          } else if (this.isOwnerMode) {
+            bioEl.textContent = 'Add a bio to introduce yourself to your visitors.';
+            bioEl.style.display = 'block';
+            bioEl.classList.add('empty-bio');
+          } else {
+            bioEl.style.display = 'none';
+          }
+        }
+
+        // Stats & Owner Controls
+        const countEl = document.getElementById('public-profile-file-count');
+        const bannerEditBtn = document.getElementById('banner-edit-profile-btn');
+        const instaChangeAvatarBtn = document.getElementById('insta-change-avatar-btn');
+        const tabsBar = document.getElementById('profile-tabs-bar');
+        const tabPrivateBtn = document.getElementById('profile-tab-private');
+        const tabPublicBtn = document.getElementById('profile-tab-public');
+        const tabPrivateCount = document.getElementById('tab-private-count');
+        const tabPublicCount = document.getElementById('tab-public-count');
+
+        if (countEl) {
+          const shownCount = this.currentTab === 'private' ? (data.profile.total_private_files || 0) : (data.profile.total_public_files || 0);
+          countEl.textContent = `${shownCount} ${this.currentTab} file${shownCount === 1 ? '' : 's'}`;
+        }
+
+        if (this.isOwnerMode) {
+          if (bannerEditBtn) bannerEditBtn.style.display = 'inline-flex';
+          if (instaChangeAvatarBtn) instaChangeAvatarBtn.style.display = 'flex';
+          if (tabsBar) tabsBar.style.display = 'flex';
+          if (tabPrivateCount) tabPrivateCount.textContent = data.profile.total_private_files || 0;
+          if (tabPublicCount) tabPublicCount.textContent = data.profile.total_public_files || 0;
+
+          if (tabPrivateBtn && tabPublicBtn) {
+            if (this.currentTab === 'private') {
+              tabPrivateBtn.classList.add('active');
+              tabPublicBtn.classList.remove('active');
+            } else {
+              tabPublicBtn.classList.add('active');
+              tabPrivateBtn.classList.remove('active');
+            }
+          }
+        } else {
+          if (bannerEditBtn) bannerEditBtn.style.display = 'none';
+          if (instaChangeAvatarBtn) instaChangeAvatarBtn.style.display = 'none';
+          if (tabsBar) tabsBar.style.display = 'none';
+        }
       }
 
       // Owner Mode indicator and back button
@@ -281,7 +370,7 @@ const Drive = {
 
     } catch (err) {
       console.error('Failed to load public profile:', err);
-      this.showToast(err.message || 'Could not load public profile.', 'error');
+      this.showToast(err.message || 'Could not load profile.', 'error');
     } finally {
       if (loader) loader.classList.add('hidden');
     }
@@ -360,12 +449,12 @@ const Drive = {
 
   renderFolderCard(folder) {
     const isPublic = folder.is_public !== false;
-    const showVis = !this.isPublicMode || this.isOwnerMode;
+    const canManage = !this.isPublicMode || this.isOwnerMode;
 
     return `
       <div class="folder-card"
            data-id="${folder.id}"
-           draggable="${!this.isPublicMode || this.isOwnerMode}"
+           draggable="${canManage}"
            ondblclick="Drive.openFolder('${folder.id}')"
            onclick="Drive.selectFolder(this, '${folder.id}')"
            oncontextmenu="Drive.showFolderContextMenu(event, '${folder.id}')"
@@ -376,11 +465,12 @@ const Drive = {
           ${Icons.folder}
           <span class="folder-name" title="${folder.name}">${folder.name}</span>
         </div>
-        ${showVis ? `
+        ${canManage ? `
           <button class="vis-badge ${isPublic ? 'public' : 'private'}"
                   onclick="Drive.toggleFolderVisibility(event, '${folder.id}')"
                   title="Click to toggle Public / Private">
             ${isPublic ? Icons.globe : Icons.lock}
+            <span>${isPublic ? 'Public' : 'Private'}</span>
           </button>
         ` : ''}
       </div>
@@ -403,6 +493,12 @@ const Drive = {
       if (this.currentNav === 'trash') {
         breadcrumbsEl.innerHTML = '<span class="breadcrumb-item">Trash</span>';
         return;
+      }
+    } else {
+      if (trail && trail.length > 0) {
+        trail[0].name = this.isOwnerMode
+          ? `${this.publicProfileData?.profile?.name || 'My'}'s ${this.currentTab.toUpperCase()} files`
+          : `${this.publicProfileData?.profile?.name || 'User'}'s Drive`;
       }
     }
 
@@ -473,8 +569,8 @@ const Drive = {
       container.innerHTML = `
         <div style="text-align: center; padding: 48px 16px; color: #5f6368;">
           <div style="margin-bottom: 12px;">${Icons.upload_cloud}</div>
-          <p style="font-size: 16px; font-weight: 500;">No files here yet</p>
-          <p style="font-size: 13px; margin-top: 4px;">${this.isPublicMode && !this.isOwnerMode ? 'This folder contains no public files.' : 'Drag and drop files to upload, or click "+ New"'}</p>
+          <p style="font-size: 16px; font-weight: 500;">No ${this.isPublicMode ? this.currentTab : ''} files here</p>
+          <p style="font-size: 13px; margin-top: 4px;">${this.isPublicMode && !this.isOwnerMode ? 'This profile has no public files shared in this folder.' : 'Drag and drop files to upload, or click "+ New"'}</p>
         </div>
       `;
       return;
@@ -498,7 +594,7 @@ const Drive = {
                 <th>Category</th>
                 <th>File Size</th>
                 <th>Modified</th>
-                ${(!this.isPublicMode || this.isOwnerMode) ? '<th style="width: 80px;">Access</th>' : ''}
+                ${(!this.isPublicMode || this.isOwnerMode) ? '<th style="width: 90px;">Visibility</th>' : ''}
                 <th style="width: 40px;"></th>
               </tr>
             </thead>
@@ -844,8 +940,12 @@ const Drive = {
     try {
       await API.toggleFileVisibility(fileId, newPublic);
       file.is_public = newPublic;
-      this.showToast(`Set to ${newPublic ? 'Public' : 'Private'}`);
-      this.renderFiles();
+      this.showToast(`Moved to ${newPublic ? 'Public' : 'Private'}`);
+      if (this.isPublicMode) {
+        this.loadPublicDrive();
+      } else {
+        this.renderFiles();
+      }
     } catch (err) {
       this.showToast(err.message || 'Failed to update visibility', 'error');
     }
@@ -863,8 +963,12 @@ const Drive = {
     try {
       await API.toggleFolderVisibility(folderId, newPublic);
       folder.is_public = newPublic;
-      this.showToast(`Folder set to ${newPublic ? 'Public' : 'Private'}`);
-      this.renderFolders();
+      this.showToast(`Folder moved to ${newPublic ? 'Public' : 'Private'}`);
+      if (this.isPublicMode) {
+        this.loadPublicDrive();
+      } else {
+        this.renderFolders();
+      }
     } catch (err) {
       this.showToast(err.message || 'Failed to update folder visibility', 'error');
     }

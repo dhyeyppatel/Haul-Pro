@@ -1,4 +1,5 @@
-// Haul Pro - Authentication Controller
+// Haul Pro - Authentication & Profile Controller
+// Instagram-style Profile Updates, Avatar Upload, and Auth State
 
 const Auth = {
   currentUser: null,
@@ -6,6 +7,7 @@ const Auth = {
 
   init() {
     this.bindEvents();
+    this.bindEditProfileEvents();
     this.checkSession();
   },
 
@@ -44,7 +46,8 @@ const Auth = {
         const dropdown = document.getElementById('profile-dropdown');
         if (dropdown) dropdown.style.display = 'none';
         if (this.currentUser && this.currentUser.username) {
-          window.location.href = `/${this.currentUser.username}`;
+          history.pushState(null, '', `/${this.currentUser.username}`);
+          Drive.init();
         }
       });
     }
@@ -70,6 +73,190 @@ const Auth = {
       const dropdown = document.getElementById('profile-dropdown');
       if (dropdown) dropdown.style.display = 'none';
     });
+  },
+
+  bindEditProfileEvents() {
+    const editBtn = document.getElementById('profile-edit-btn');
+    const bannerEditBtn = document.getElementById('banner-edit-profile-btn');
+    const closeBtn = document.getElementById('edit-profile-close-btn');
+    const cancelBtn = document.getElementById('edit-profile-cancel-btn');
+    const editForm = document.getElementById('edit-profile-form');
+    const avatarInput = document.getElementById('edit-modal-avatar-input');
+    const instaAvatarInput = document.getElementById('insta-avatar-file-input');
+    const instaChangeAvatarBtn = document.getElementById('insta-change-avatar-btn');
+    const bioInput = document.getElementById('edit-bio-input');
+    const unameInput = document.getElementById('edit-username-input');
+
+    if (editBtn) {
+      editBtn.addEventListener('click', () => {
+        const dropdown = document.getElementById('profile-dropdown');
+        if (dropdown) dropdown.style.display = 'none';
+        this.openEditProfileModal();
+      });
+    }
+
+    if (bannerEditBtn) {
+      bannerEditBtn.addEventListener('click', () => this.openEditProfileModal());
+    }
+
+    if (closeBtn) closeBtn.addEventListener('click', () => this.closeEditProfileModal());
+    if (cancelBtn) cancelBtn.addEventListener('click', () => this.closeEditProfileModal());
+
+    if (editForm) {
+      editForm.addEventListener('submit', (e) => this.handleProfileSubmit(e));
+    }
+
+    if (avatarInput) {
+      avatarInput.addEventListener('change', (e) => this.handleAvatarFileChange(e));
+    }
+
+    if (instaChangeAvatarBtn && instaAvatarInput) {
+      instaChangeAvatarBtn.addEventListener('click', () => instaAvatarInput.click());
+      instaAvatarInput.addEventListener('change', (e) => this.handleAvatarFileChange(e));
+    }
+
+    if (bioInput) {
+      bioInput.addEventListener('input', (e) => {
+        const countEl = document.getElementById('bio-char-count');
+        if (countEl) countEl.textContent = e.target.value.length;
+      });
+    }
+
+    if (unameInput) {
+      unameInput.addEventListener('input', (e) => {
+        const hintEl = document.getElementById('edit-profile-url-hint');
+        const clean = e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, '');
+        if (hintEl) hintEl.textContent = `${window.location.host}/${clean || 'username'}`;
+      });
+    }
+  },
+
+  openEditProfileModal() {
+    if (!this.currentUser) return;
+
+    const modal = document.getElementById('edit-profile-modal');
+    const nameInput = document.getElementById('edit-name-input');
+    const unameInput = document.getElementById('edit-username-input');
+    const bioInput = document.getElementById('edit-bio-input');
+    const countEl = document.getElementById('bio-char-count');
+    const hintEl = document.getElementById('edit-profile-url-hint');
+    const nameDisplay = document.getElementById('edit-photo-name-display');
+    const errBox = document.getElementById('edit-profile-error');
+
+    if (nameInput) nameInput.value = this.currentUser.name || '';
+    if (unameInput) unameInput.value = this.currentUser.username || '';
+    if (bioInput) bioInput.value = this.currentUser.bio || '';
+    if (countEl) countEl.textContent = (this.currentUser.bio || '').length;
+    if (hintEl) hintEl.textContent = `${window.location.host}/${this.currentUser.username || 'username'}`;
+    if (nameDisplay) nameDisplay.textContent = this.currentUser.name || 'User';
+    if (errBox) errBox.style.display = 'none';
+
+    this.renderAvatarPreviewInModal(this.currentUser);
+
+    if (modal) modal.style.display = 'flex';
+  },
+
+  closeEditProfileModal() {
+    const modal = document.getElementById('edit-profile-modal');
+    if (modal) modal.style.display = 'none';
+  },
+
+  renderAvatarPreviewInModal(user) {
+    const initialEl = document.getElementById('edit-modal-avatar-initial');
+    const imgEl = document.getElementById('edit-modal-avatar-img');
+    const initial = (user.name || user.email || 'U').charAt(0).toUpperCase();
+
+    if (user.avatar_url && imgEl && initialEl) {
+      imgEl.src = user.avatar_url;
+      imgEl.style.display = 'block';
+      initialEl.style.display = 'none';
+    } else if (imgEl && initialEl) {
+      imgEl.style.display = 'none';
+      initialEl.textContent = initial;
+      initialEl.style.display = 'block';
+    }
+  },
+
+  async handleAvatarFileChange(e) {
+    const files = e.target.files;
+    if (!files || !files.length) return;
+
+    const file = files[0];
+    Drive.showToast('Uploading profile photo...');
+
+    try {
+      const res = await API.uploadAvatar(file);
+      if (res.success && res.avatar_url) {
+        if (this.currentUser) {
+          this.currentUser.avatar_url = res.avatar_url;
+        }
+        this.setCurrentUser(this.currentUser);
+        this.renderAvatarPreviewInModal(this.currentUser);
+        Drive.showToast('Profile photo updated successfully!');
+
+        // If currently in public profile view, refresh banner
+        if (Drive.isPublicMode) {
+          Drive.reload();
+        }
+      }
+    } catch (err) {
+      Drive.showToast(err.message || 'Failed to upload photo', 'error');
+    }
+  },
+
+  async handleProfileSubmit(e) {
+    e.preventDefault();
+    const errBox = document.getElementById('edit-profile-error');
+    const saveBtn = document.getElementById('edit-profile-save-btn');
+    if (errBox) errBox.style.display = 'none';
+
+    const name = document.getElementById('edit-name-input').value.trim();
+    const username = document.getElementById('edit-username-input').value.trim().toLowerCase();
+    const bio = document.getElementById('edit-bio-input').value.trim();
+
+    if (!name) {
+      if (errBox) {
+        errBox.textContent = 'Name is required.';
+        errBox.style.display = 'block';
+      }
+      return;
+    }
+
+    if (saveBtn) {
+      saveBtn.disabled = true;
+      saveBtn.textContent = 'Saving...';
+    }
+
+    try {
+      const oldUsername = this.currentUser ? this.currentUser.username : '';
+      const res = await API.updateProfile({ name, username, bio });
+
+      if (res.success && res.user) {
+        this.setCurrentUser(res.user);
+        this.closeEditProfileModal();
+        Drive.showToast('Profile saved successfully!');
+
+        // If username changed and currently viewing old profile URL, update URL
+        if (Drive.isPublicMode && oldUsername !== res.user.username) {
+          history.pushState(null, '', `/${res.user.username}`);
+          Drive.profileUsername = res.user.username;
+        }
+
+        if (Drive.isPublicMode) {
+          Drive.reload();
+        }
+      }
+    } catch (err) {
+      if (errBox) {
+        errBox.textContent = err.message || 'Failed to update profile.';
+        errBox.style.display = 'block';
+      }
+    } finally {
+      if (saveBtn) {
+        saveBtn.disabled = false;
+        saveBtn.textContent = 'Save';
+      }
+    }
   },
 
   async checkSession() {
@@ -111,28 +298,56 @@ const Auth = {
     this.currentUser = user;
     const initial = (user.name || user.email || 'U').charAt(0).toUpperCase();
 
+    // Topbar Profile Button
     const profileBtn = document.getElementById('user-profile-btn');
     const signinBtn = document.getElementById('topbar-signin-btn');
     if (profileBtn) {
       profileBtn.style.display = 'flex';
-      profileBtn.textContent = initial;
-      if (user.avatar_color) profileBtn.style.backgroundColor = user.avatar_color;
+      if (user.avatar_url) {
+        profileBtn.innerHTML = `<img src="${user.avatar_url}" class="user-avatar-topbar-img" alt="" referrerpolicy="no-referrer">`;
+        profileBtn.style.backgroundColor = 'transparent';
+      } else {
+        profileBtn.textContent = initial;
+        profileBtn.style.backgroundColor = user.avatar_color || '#1a73e8';
+      }
     }
     if (signinBtn) signinBtn.style.display = 'none';
 
-    const dropdownAvatar = document.getElementById('profile-avatar-lg');
+    // Dropdown elements
+    const dropdownAvatarInitial = document.getElementById('profile-dropdown-initial');
+    const dropdownAvatarImg = document.getElementById('profile-dropdown-img');
+    const dropdownAvatarWrap = document.getElementById('profile-avatar-lg');
     const dropdownName = document.getElementById('profile-name');
     const dropdownEmail = document.getElementById('profile-email');
     const dropdownUserTag = document.getElementById('profile-username-tag');
+    const dropdownBio = document.getElementById('profile-dropdown-bio');
     const dropdownUrlPreview = document.getElementById('profile-public-url-preview');
 
-    if (dropdownAvatar) {
-      dropdownAvatar.textContent = initial;
-      if (user.avatar_color) dropdownAvatar.style.backgroundColor = user.avatar_color;
+    if (user.avatar_url && dropdownAvatarImg && dropdownAvatarInitial) {
+      dropdownAvatarImg.src = user.avatar_url;
+      dropdownAvatarImg.style.display = 'block';
+      dropdownAvatarInitial.style.display = 'none';
+      if (dropdownAvatarWrap) dropdownAvatarWrap.style.backgroundColor = 'transparent';
+    } else if (dropdownAvatarInitial && dropdownAvatarImg) {
+      dropdownAvatarImg.style.display = 'none';
+      dropdownAvatarInitial.textContent = initial;
+      dropdownAvatarInitial.style.display = 'block';
+      if (dropdownAvatarWrap) dropdownAvatarWrap.style.backgroundColor = user.avatar_color || '#1a73e8';
     }
+
     if (dropdownName) dropdownName.textContent = user.name || 'User';
     if (dropdownEmail) dropdownEmail.textContent = user.email || '';
     if (dropdownUserTag) dropdownUserTag.textContent = `@${user.username || 'user'}`;
+
+    if (dropdownBio) {
+      if (user.bio) {
+        dropdownBio.textContent = user.bio;
+        dropdownBio.style.display = 'block';
+      } else {
+        dropdownBio.style.display = 'none';
+      }
+    }
+
     if (dropdownUrlPreview) {
       dropdownUrlPreview.textContent = `${window.location.origin}/${user.username || 'user'}`;
     }
