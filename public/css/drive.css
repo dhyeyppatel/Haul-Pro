@@ -401,6 +401,38 @@ body {
   white-space: nowrap;
 }
 
+.folder-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.icon-btn-subtle {
+  background: transparent;
+  border: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.icon-btn-subtle:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.icon-btn-subtle svg {
+  width: 16px;
+  height: 16px;
+  stroke: currentColor;
+}
+
 /* FILES GRID VIEW */
 .files-grid {
   display: grid;
@@ -602,11 +634,18 @@ body {
 
 .upload-drawer-item {
   display: flex;
-  align-items: center;
-  gap: 12px;
+  flex-direction: column;
+  gap: 6px;
   padding: 10px 16px;
   border-bottom: 1px solid var(--border-subtle);
   font-size: 13px;
+}
+
+.upload-item-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
 }
 
 .upload-item-name {
@@ -614,6 +653,34 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.upload-item-status {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  margin-left: 8px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+
+.upload-progress-track {
+  width: 100%;
+  height: 4px;
+  background: #e8eaed;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.upload-progress-fill {
+  height: 100%;
+  width: 0%;
+  background: var(--color-blue);
+  border-radius: 2px;
+  transition: width 0.15s ease-out;
 }
 
 /* CONTEXT MENU */
@@ -1435,4 +1502,218 @@ body {
 @keyframes modalScale {
   from { transform: scale(0.95); opacity: 0; }
   to { transform: scale(1); opacity: 1; }
+}
+
+/* ==========================================
+   SELECTION CHECKBOXES & MULTI-SELECT BAR
+   ========================================== */
+.card-select-checkbox {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid rgba(60, 64, 67, 0.45);
+  background: rgba(255, 255, 255, 0.95);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 10;
+  opacity: 0;
+  transition: opacity 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+}
+
+.file-card:hover .card-select-checkbox {
+  opacity: 1;
+}
+
+.card-select-checkbox.checked,
+.file-card.selected .card-select-checkbox {
+  opacity: 1;
+  background: var(--color-blue);
+  border-color: var(--color-blue);
+  color: #ffffff;
+}
+
+.card-select-checkbox svg {
+  width: 14px;
+  height: 14px;
+  stroke: #ffffff;
+}
+
+.card-select-checkbox:hover {
+  transform: scale(1.1);
+  border-color: var(--color-blue);
+}
+
+.row-select-checkbox {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  border: 2px solid var(--border-color);
+  background: var(--bg-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.row-select-checkbox:hover {
+  border-color: var(--color-blue);
+}
+
+.row-select-checkbox.checked,
+tr.selected .row-select-checkbox {
+  background: var(--color-blue);
+  border-color: var(--color-blue);
+  color: #ffffff;
+}
+
+.row-select-checkbox svg {
+  width: 12px;
+  height: 12px;
+  stroke: #ffffff;
+}
+
+.file-card.selected {
+  background: #e8f0fe !important;
+  border-color: var(--color-blue) !important;
+  box-shadow: 0 0 0 1px var(--color-blue);
+}
+
+.files-table tbody tr.selected {
+  background: #e8f0fe !important;
+}
+
+/* FLOATING MULTI-SELECT BAR */
+.multi-select-bar {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #202124;
+  color: #ffffff;
+  border-radius: 28px;
+  padding: 6px 14px 6px 10px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  z-index: 600;
+  animation: slideUp 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  max-width: 90vw;
+  flex-wrap: wrap;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translate(-50%, 20px);
+    opacity: 0;
+  }
+  to {
+    transform: translate(-50%, 0);
+    opacity: 1;
+  }
+}
+
+.multi-select-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-right: 12px;
+  border-right: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+.multi-close-btn {
+  background: transparent;
+  border: none;
+  color: #ffffff;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.multi-close-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.multi-close-btn svg {
+  width: 18px;
+  height: 18px;
+  stroke: #ffffff;
+}
+
+.multi-select-count {
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.multi-select-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.multi-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+  border-radius: 20px;
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.multi-action-btn:hover {
+  background: rgba(255, 255, 255, 0.18);
+  border-color: rgba(255, 255, 255, 0.25);
+}
+
+.multi-action-btn svg {
+  width: 14px;
+  height: 14px;
+  stroke: currentColor;
+}
+
+.multi-action-btn.danger {
+  color: #f28b82;
+}
+
+.multi-action-btn.danger:hover {
+  background: rgba(242, 139, 130, 0.18);
+  border-color: rgba(242, 139, 130, 0.35);
+}
+
+/* ==========================================
+   SHARE FOLDER MODAL
+   ========================================== */
+.share-folder-status-box {
+  background: var(--bg-hover);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.share-folder-desc {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.45;
+  margin: 0;
 }

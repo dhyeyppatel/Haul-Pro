@@ -484,7 +484,7 @@ def create_folder():
         "user_id": user_id,
         "parent_id": parent_id,
         "color": color,
-        "is_public": True,
+        "is_public": False,
         "is_starred": False,
         "is_trashed": False,
         "created_at": now,
@@ -682,7 +682,7 @@ def upload_files():
             "category": category,
             "hosted_url": hosted_url,
             "delete_token": delete_token,
-            "is_public": True,
+            "is_public": False,
             "is_starred": False,
             "is_trashed": False,
             "tags": [],
@@ -900,6 +900,60 @@ def toggle_file_visibility(file_id):
 
     return jsonify({"success": True, "file": serialize_doc(res)})
 
+@app.route("/api/files/bulk-visibility", methods=["POST"])
+def bulk_file_visibility():
+    auth_user = authenticate()
+    if not auth_user:
+        return jsonify({"success": False, "error": "Unauthorized"}), 401
+
+    data = request.get_json() or {}
+    file_ids = data.get("fileIds", [])
+    is_public = bool(data.get("isPublic", False))
+
+    if not file_ids:
+        return jsonify({"success": False, "error": "No files selected."}), 400
+
+    database = get_db()
+    user_id = ObjectId(auth_user["id"])
+    obj_ids = [ObjectId(f) for f in file_ids if f]
+
+    database.files.update_many(
+        {"_id": {"$in": obj_ids}, "user_id": user_id},
+        {"$set": {"is_public": is_public, "updated_at": datetime.datetime.utcnow()}}
+    )
+    return jsonify({"success": True, "message": f"Updated visibility for {len(obj_ids)} file(s)."})
+
+@app.route("/api/files/bulk-delete", methods=["POST"])
+def bulk_delete_files():
+    auth_user = authenticate()
+    if not auth_user:
+        return jsonify({"success": False, "error": "Unauthorized"}), 401
+
+    data = request.get_json() or {}
+    file_ids = data.get("fileIds", [])
+    permanent = bool(data.get("permanent", False))
+
+    if not file_ids:
+        return jsonify({"success": False, "error": "No files selected."}), 400
+
+    database = get_db()
+    user_id = ObjectId(auth_user["id"])
+    obj_ids = [ObjectId(f) for f in file_ids if f]
+
+    if permanent:
+        files_to_del = list(database.files.find({"_id": {"$in": obj_ids}, "user_id": user_id}))
+        total_size = sum(f.get("size", 0) for f in files_to_del)
+        database.files.delete_many({"_id": {"$in": obj_ids}, "user_id": user_id})
+        if total_size > 0:
+            database.users.update_one({"_id": user_id}, {"$inc": {"storage_used_bytes": -total_size}})
+    else:
+        database.files.update_many(
+            {"_id": {"$in": obj_ids}, "user_id": user_id},
+            {"$set": {"is_trashed": True, "updated_at": datetime.datetime.utcnow()}}
+        )
+
+    return jsonify({"success": True, "message": f"Processed {len(obj_ids)} file(s)."})
+
 # ==========================================
 # PUBLIC PROFILE ENDPOINT (/<username>)
 # ==========================================
@@ -931,9 +985,9 @@ def get_public_profile(username):
     # Folder query
     folder_query = {"user_id": user["_id"], "is_trashed": False, "parent_id": parent_id}
     if tab == "private":
-        folder_query["is_public"] = False
+        folder_query["is_public"] = {"$ne": True}
     else:
-        folder_query["is_public"] = {"$ne": False}
+        folder_query["is_public"] = True
 
     folders_cursor = database.folders.find(folder_query).sort("name", 1)
     folders = [serialize_doc(f) for f in folders_cursor]
@@ -948,9 +1002,9 @@ def get_public_profile(username):
 
     file_query = {"user_id": user["_id"], "is_trashed": False, "folder_id": parent_id}
     if tab == "private":
-        file_query["is_public"] = False
+        file_query["is_public"] = {"$ne": True}
     else:
-        file_query["is_public"] = {"$ne": False}
+        file_query["is_public"] = True
 
     category = request.args.get("category")
     if category and category != "all":
@@ -967,8 +1021,8 @@ def get_public_profile(username):
     files_cursor = database.files.find(file_query).sort("created_at", -1).skip(skip).limit(limit)
     files = [serialize_doc(f) for f in files_cursor]
 
-    total_public_count = database.files.count_documents({"user_id": user["_id"], "is_trashed": False, "is_public": {"$ne": False}})
-    total_private_count = database.files.count_documents({"user_id": user["_id"], "is_trashed": False, "is_public": False})
+    total_public_count = database.files.count_documents({"user_id": user["_id"], "is_trashed": False, "is_public": True})
+    total_private_count = database.files.count_documents({"user_id": user["_id"], "is_trashed": False, "is_public": {"$ne": True}})
 
     breadcrumbs = [{"id": None, "name": f"{user['name']}'s Drive"}]
     if parent_id:

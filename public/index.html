@@ -422,6 +422,63 @@
     </div>
   </div>
 
+  <!-- SHARE FOLDER MODAL -->
+  <div id="share-folder-modal" class="modal-backdrop" style="display: none;">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 class="modal-title" id="share-folder-title">Share folder</h3>
+        <button type="button" class="icon-btn" id="share-folder-close-btn" style="width: 32px; height: 32px;">
+          <span id="share-folder-close-icon"></span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="share-folder-status-box">
+          <div id="share-folder-badge" class="vis-badge private">Private</div>
+          <p id="share-folder-desc" class="share-folder-desc">This folder is currently private. Anyone with this link can view its contents once you make it Public.</p>
+        </div>
+
+        <div class="modal-input-group" style="margin-top: 14px;">
+          <label class="modal-field-label">Folder Link</label>
+          <div class="modal-username-wrap">
+            <input type="text" id="share-folder-link-input" class="modal-input" readonly>
+          </div>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn-text" id="share-folder-toggle-vis-btn">Make Public</button>
+        <button type="button" class="btn-filled" id="share-folder-copy-btn">Copy link</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MULTI-SELECT FLOATING ACTION BAR -->
+  <div id="multi-select-bar" class="multi-select-bar" style="display: none;">
+    <div class="multi-select-left">
+      <button type="button" class="multi-close-btn" onclick="Drive.clearSelection()" title="Deselect all">
+        <span id="multi-select-close-icon"></span>
+      </button>
+      <span id="multi-select-count" class="multi-select-count">0 items selected</span>
+    </div>
+    <div class="multi-select-actions">
+      <button type="button" class="multi-action-btn" onclick="Drive.bulkSetVisibility(true)" title="Publish selected files">
+        <span id="multi-globe-icon"></span>
+        <span>Make Public</span>
+      </button>
+      <button type="button" class="multi-action-btn" onclick="Drive.bulkSetVisibility(false)" title="Hide selected files">
+        <span id="multi-lock-icon"></span>
+        <span>Make Private</span>
+      </button>
+      <button type="button" class="multi-action-btn" onclick="Drive.bulkMove()" title="Move selected files to a folder">
+        <span id="multi-move-icon"></span>
+        <span>Move to...</span>
+      </button>
+      <button type="button" class="multi-action-btn danger" onclick="Drive.bulkDelete()" title="Delete selected files">
+        <span id="multi-trash-icon"></span>
+        <span>Delete</span>
+      </button>
+    </div>
+  </div>
+
   <!-- TOAST CONTAINER -->
   <div id="toast-container" class="toast-container"></div>
 
@@ -448,7 +505,7 @@
       document.getElementById('nav-recent-icon').innerHTML = Icons.info;
       document.getElementById('nav-starred-icon').innerHTML = Icons.star;
       document.getElementById('nav-trash-icon').innerHTML = Icons.trash;
-      document.getElementById('storage-icon-container').innerHTML = Icons.upload_cloud;
+      document.getElementById('storage-icon-container').innerHTML = Icons.storage_drive;
       document.getElementById('dropzone-icon-container').innerHTML = Icons.upload_cloud;
       document.getElementById('drawer-close-icon').innerHTML = Icons.close;
       document.getElementById('viewer-close-icon').innerHTML = Icons.close;
@@ -480,6 +537,19 @@
       if (ownerBarIcon) ownerBarIcon.innerHTML = Icons.info;
       const moveCloseIcon = document.getElementById('move-modal-close-icon');
       if (moveCloseIcon) moveCloseIcon.innerHTML = Icons.close;
+
+      const shareFolderClose = document.getElementById('share-folder-close-icon');
+      if (shareFolderClose) shareFolderClose.innerHTML = Icons.close;
+      const multiClose = document.getElementById('multi-select-close-icon');
+      if (multiClose) multiClose.innerHTML = Icons.close;
+      const multiGlobe = document.getElementById('multi-globe-icon');
+      if (multiGlobe) multiGlobe.innerHTML = Icons.globe;
+      const multiLock = document.getElementById('multi-lock-icon');
+      if (multiLock) multiLock.innerHTML = Icons.lock;
+      const multiMove = document.getElementById('multi-move-icon');
+      if (multiMove) multiMove.innerHTML = Icons.move;
+      const multiTrash = document.getElementById('multi-trash-icon');
+      if (multiTrash) multiTrash.innerHTML = Icons.trash;
 
       // Start controllers
       Auth.init();

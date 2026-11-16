@@ -211,6 +211,20 @@ const API = {
     });
   },
 
+  async bulkSetVisibility(fileIds, isPublic) {
+    return this.request('/api/files/bulk-visibility', {
+      method: 'POST',
+      body: { fileIds: Array.isArray(fileIds) ? fileIds : [fileIds], isPublic }
+    });
+  },
+
+  async bulkDelete(fileIds, permanent = false) {
+    return this.request('/api/files/bulk-delete', {
+      method: 'POST',
+      body: { fileIds: Array.isArray(fileIds) ? fileIds : [fileIds], permanent }
+    });
+  },
+
   async toggleFolderVisibility(folderId, isPublic) {
     return this.request(`/api/folders/${folderId}/visibility`, {
       method: 'PATCH',

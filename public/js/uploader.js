@@ -105,23 +105,38 @@ const Uploader = {
       const itemEl = document.createElement('div');
       itemEl.className = 'upload-drawer-item';
       itemEl.innerHTML = `
-        <span class="upload-item-name">${file.name}</span>
-        <span class="upload-item-status" style="font-size: 12px; color: #1a73e8;">0%</span>
+        <div class="upload-item-header">
+          <span class="upload-item-name" title="${file.name}">${file.name}</span>
+          <span class="upload-item-status">0%</span>
+        </div>
+        <div class="upload-progress-track">
+          <div class="upload-progress-fill" style="width: 0%;"></div>
+        </div>
       `;
       if (listEl) listEl.appendChild(itemEl);
 
       const statusEl = itemEl.querySelector('.upload-item-status');
+      const fillEl = itemEl.querySelector('.upload-progress-fill');
 
       try {
         await API.uploadFiles([file], Drive.currentFolderId, (percent) => {
-          if (statusEl) statusEl.textContent = `${percent}%`;
+          const p = Math.min(100, Math.max(0, percent));
+          if (statusEl) statusEl.textContent = `${p}%`;
+          if (fillEl) fillEl.style.width = `${p}%`;
         });
         if (statusEl) {
           statusEl.innerHTML = `<span style="color: #34a853;">${Icons.check}</span>`;
         }
+        if (fillEl) {
+          fillEl.style.width = '100%';
+          fillEl.style.backgroundColor = '#34a853';
+        }
       } catch (err) {
         if (statusEl) {
           statusEl.innerHTML = `<span style="color: #ea4335; font-size: 11px;">Failed</span>`;
+        }
+        if (fillEl) {
+          fillEl.style.backgroundColor = '#ea4335';
         }
       }
     }

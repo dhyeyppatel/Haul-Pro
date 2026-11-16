@@ -14,16 +14,22 @@ const Drive = {
   folders: [],
   selectedFile: null,
 
+  // Multi-Selection State
+  selectedFileIds: new Set(),
+
   // Public Profile State
   isPublicMode: false,
   profileUsername: null,
   isOwnerMode: false,
   publicProfileData: null,
-  currentTab: 'public', // 'public' | 'private' (Matches Instagram wireframe)
+  currentTab: 'private', // Default to 'private' per user request
 
   // Move Modal State
-  moveTargetItem: null, // { id, type: 'file' | 'folder', name }
+  moveTargetItem: null, // { id, type: 'file' | 'folder' | 'bulk', name }
   selectedMoveFolderId: null,
+
+  // Share Folder State
+  sharingFolderId: null,
 
   // Drag & Drop State
   draggedFileId: null,
@@ -42,9 +48,19 @@ const Drive = {
     if (username) {
       this.isPublicMode = true;
       this.profileUsername = username;
+      // If visitor, must be public; if owner, default tab can be private or public
+      this.currentTab = 'public';
     } else {
       this.isPublicMode = false;
       this.profileUsername = null;
+      this.currentTab = 'private';
+    }
+
+    // Support direct folder link sharing via ?folderId=...
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlFid = urlParams.get('folderId');
+    if (urlFid) {
+      this.currentFolderId = urlFid;
     }
 
     this.bindEvents();
@@ -62,6 +78,7 @@ const Drive = {
         this.currentNav = item.dataset.nav || 'drive';
         this.currentFolderId = null;
         this.searchQuery = '';
+        this.clearSelection();
         const searchInput = document.getElementById('search-input');
         if (searchInput) searchInput.value = '';
 
@@ -83,6 +100,7 @@ const Drive = {
         document.querySelectorAll('.chip').forEach(el => el.classList.remove('active'));
         chip.classList.add('active');
         this.currentCategory = chip.dataset.category || 'all';
+        this.clearSelection();
         this.reloadFilesOnly();
       });
     });
@@ -95,6 +113,7 @@ const Drive = {
         clearTimeout(searchTimeout);
         searchTimeout = setTimeout(() => {
           this.searchQuery = e.target.value.trim();
+          this.clearSelection();
           this.reloadFilesOnly();
         }, 300);
       });
@@ -132,7 +151,7 @@ const Drive = {
     const shareProfileBtn = document.getElementById('copy-public-profile-link-btn');
     if (shareProfileBtn) {
       shareProfileBtn.addEventListener('click', () => {
-        const url = window.location.href;
+        const url = `${window.location.origin}/${this.profileUsername || Auth.currentUser?.username || ''}`;
         navigator.clipboard.writeText(url).then(() => {
           this.showToast('Public profile link copied to clipboard!');
         });
@@ -146,6 +165,8 @@ const Drive = {
         this.isPublicMode = false;
         this.profileUsername = null;
         this.isOwnerMode = false;
+        this.currentFolderId = null;
+        this.clearSelection();
         this.reload();
       });
     }
@@ -160,6 +181,7 @@ const Drive = {
         this.currentTab = 'private';
         this.page = 1;
         this.currentFolderId = null;
+        this.clearSelection();
         this.loadPublicDrive();
       });
     }
@@ -170,6 +192,7 @@ const Drive = {
         this.currentTab = 'public';
         this.page = 1;
         this.currentFolderId = null;
+        this.clearSelection();
         this.loadPublicDrive();
       });
     }
@@ -208,6 +231,21 @@ const Drive = {
     if (moveCloseBtn) {
       moveCloseBtn.addEventListener('click', () => this.closeMoveModal());
     }
+
+    // Share Folder Modal events
+    const shareFolderCloseBtn = document.getElementById('share-folder-close-btn');
+    const shareFolderCopyBtn = document.getElementById('share-folder-copy-btn');
+    const shareFolderToggleBtn = document.getElementById('share-folder-toggle-vis-btn');
+
+    if (shareFolderCloseBtn) {
+      shareFolderCloseBtn.addEventListener('click', () => this.closeShareFolderModal());
+    }
+    if (shareFolderCopyBtn) {
+      shareFolderCopyBtn.addEventListener('click', () => this.copyFolderShareLink());
+    }
+    if (shareFolderToggleBtn) {
+      shareFolderToggleBtn.addEventListener('click', () => this.toggleShareFolderVisibility());
+    }
   },
 
   async reload() {
@@ -215,6 +253,7 @@ const Drive = {
     this.files = [];
     this.hasMore = true;
     this.selectedFile = null;
+    this.clearSelection();
 
     if (this.isPublicMode) {
       await this.loadPublicDrive();
@@ -229,11 +268,192 @@ const Drive = {
     this.page = 1;
     this.files = [];
     this.hasMore = true;
+    this.clearSelection();
 
     if (this.isPublicMode) {
       await this.loadPublicDrive();
     } else {
       await this.loadFiles(1);
+    }
+  },
+
+  // ==========================================
+  // MULTI-SELECTION SYSTEM
+  // ==========================================
+  toggleFileSelection(e, fileId) {
+    if (e) {
+      e.stopPropagation();
+      e.preventDefault();
+    }
+
+    if (this.selectedFileIds.has(fileId)) {
+      this.selectedFileIds.delete(fileId);
+    } else {
+      this.selectedFileIds.add(fileId);
+    }
+
+    this.updateMultiSelectBar();
+    this.updateSelectedElementStyles();
+  },
+
+  clearSelection() {
+    this.selectedFileIds.clear();
+    this.updateMultiSelectBar();
+    this.updateSelectedElementStyles();
+  },
+
+  updateSelectedElementStyles() {
+    document.querySelectorAll('.file-card').forEach(card => {
+      const id = card.dataset.id;
+      const isSelected = this.selectedFileIds.has(id);
+      if (isSelected) {
+        card.classList.add('selected');
+      } else {
+        card.classList.remove('selected');
+      }
+      const chk = card.querySelector('.card-select-checkbox');
+      if (chk) {
+        chk.classList.toggle('checked', isSelected);
+        chk.innerHTML = isSelected ? Icons.check : '';
+      }
+    });
+
+    document.querySelectorAll('.files-table tbody tr').forEach(row => {
+      const id = row.dataset.id;
+      const isSelected = this.selectedFileIds.has(id);
+      if (isSelected) {
+        row.classList.add('selected');
+      } else {
+        row.classList.remove('selected');
+      }
+      const chk = row.querySelector('.row-select-checkbox');
+      if (chk) {
+        chk.classList.toggle('checked', isSelected);
+        chk.innerHTML = isSelected ? Icons.check : '';
+      }
+    });
+  },
+
+  updateMultiSelectBar() {
+    const bar = document.getElementById('multi-select-bar');
+    const countEl = document.getElementById('multi-select-count');
+    if (!bar) return;
+
+    const count = this.selectedFileIds.size;
+    if (count > 0) {
+      bar.style.display = 'flex';
+      if (countEl) countEl.textContent = `${count} item${count > 1 ? 's' : ''} selected`;
+    } else {
+      bar.style.display = 'none';
+    }
+  },
+
+  async bulkSetVisibility(isPublic) {
+    const fileIds = Array.from(this.selectedFileIds);
+    if (!fileIds.length) return;
+
+    try {
+      await API.bulkSetVisibility(fileIds, isPublic);
+      this.showToast(`Set ${fileIds.length} item(s) to ${isPublic ? 'Public' : 'Private'}`);
+      this.clearSelection();
+      this.reload();
+    } catch (err) {
+      this.showToast(err.message || 'Failed to update visibility', 'error');
+    }
+  },
+
+  bulkMove() {
+    const fileIds = Array.from(this.selectedFileIds);
+    if (!fileIds.length) return;
+
+    this.openMoveModal(fileIds, 'bulk', `${fileIds.length} files`);
+  },
+
+  async bulkDelete() {
+    const fileIds = Array.from(this.selectedFileIds);
+    if (!fileIds.length) return;
+
+    if (!confirm(`Move ${fileIds.length} item(s) to trash?`)) return;
+
+    try {
+      await API.bulkDelete(fileIds, false);
+      this.showToast(`Moved ${fileIds.length} item(s) to trash`);
+      this.clearSelection();
+      this.reload();
+      Auth.checkSession();
+    } catch (err) {
+      this.showToast(err.message || 'Failed to delete items', 'error');
+    }
+  },
+
+  // ==========================================
+  // SHARE FOLDER MODAL
+  // ==========================================
+  openShareFolderModal(folderId) {
+    const folder = this.folders.find(f => f.id === folderId);
+    if (!folder) return;
+
+    this.sharingFolderId = folderId;
+    const modal = document.getElementById('share-folder-modal');
+    const titleEl = document.getElementById('share-folder-title');
+    const badgeEl = document.getElementById('share-folder-badge');
+    const descEl = document.getElementById('share-folder-desc');
+    const inputEl = document.getElementById('share-folder-link-input');
+    const toggleBtn = document.getElementById('share-folder-toggle-vis-btn');
+
+    const uname = this.profileUsername || Auth.currentUser?.username || '';
+    const shareUrl = `${window.location.origin}/${uname}?folderId=${folder.id}`;
+
+    if (titleEl) titleEl.textContent = `Share "${folder.name}"`;
+    if (inputEl) inputEl.value = shareUrl;
+
+    const isPublic = folder.is_public === true;
+    if (badgeEl) {
+      badgeEl.className = `vis-badge ${isPublic ? 'public' : 'private'}`;
+      badgeEl.textContent = isPublic ? 'Public folder' : 'Private folder';
+    }
+    if (descEl) {
+      descEl.textContent = isPublic
+        ? 'This folder is Public. Anyone with this link can view and download all files inside.'
+        : 'This folder is currently Private. Make it Public so others can see and download files in this folder.';
+    }
+    if (toggleBtn) {
+      toggleBtn.textContent = isPublic ? 'Make Private' : 'Make Public';
+    }
+
+    if (modal) modal.style.display = 'flex';
+  },
+
+  closeShareFolderModal() {
+    const modal = document.getElementById('share-folder-modal');
+    if (modal) modal.style.display = 'none';
+    this.sharingFolderId = null;
+  },
+
+  copyFolderShareLink() {
+    const inputEl = document.getElementById('share-folder-link-input');
+    if (!inputEl) return;
+
+    navigator.clipboard.writeText(inputEl.value).then(() => {
+      this.showToast('Folder share link copied to clipboard!');
+      this.closeShareFolderModal();
+    });
+  },
+
+  async toggleShareFolderVisibility() {
+    if (!this.sharingFolderId) return;
+    const folder = this.folders.find(f => f.id === this.sharingFolderId);
+    if (!folder) return;
+
+    const newPublic = !folder.is_public;
+    try {
+      await API.toggleFolderVisibility(this.sharingFolderId, newPublic);
+      folder.is_public = newPublic;
+      this.showToast(`Folder set to ${newPublic ? 'Public' : 'Private'}`);
+      this.openShareFolderModal(this.sharingFolderId); // Refresh modal view
+      this.renderFolders();
+    } catch (err) {
+      this.showToast(err.message || 'Failed to update folder', 'error');
     }
   },
 
@@ -261,6 +481,11 @@ const Drive = {
       const data = await API.getPublicProfile(this.profileUsername, params);
       this.publicProfileData = data;
       this.isOwnerMode = Boolean(data.is_owner);
+
+      // If viewing as guest, tab is always public
+      if (!this.isOwnerMode) {
+        this.currentTab = 'public';
+      }
 
       // Render Instagram-style Profile Card
       if (banner && data.profile) {
@@ -298,7 +523,7 @@ const Drive = {
             bioEl.style.display = 'block';
             bioEl.classList.remove('empty-bio');
           } else if (this.isOwnerMode) {
-            bioEl.textContent = 'Add a bio to introduce yourself to your visitors.';
+            bioEl.textContent = 'Add a small bio to tell visitors about yourself.';
             bioEl.style.display = 'block';
             bioEl.classList.add('empty-bio');
           } else {
@@ -369,7 +594,7 @@ const Drive = {
       this.renderFiles();
 
     } catch (err) {
-      console.error('Failed to load public profile:', err);
+      console.error('Failed to load profile:', err);
       this.showToast(err.message || 'Could not load profile.', 'error');
     } finally {
       if (loader) loader.classList.add('hidden');
@@ -390,14 +615,12 @@ const Drive = {
     const navItems = document.querySelectorAll('.nav-list .nav-item');
 
     if (this.isPublicMode && !this.isOwnerMode) {
-      // Read-only guest mode: hide upload button & personal storage meter
       if (newBtn) newBtn.style.display = 'none';
       if (storageBox) storageBox.style.display = 'none';
       navItems.forEach(item => {
         if (item.dataset.nav !== 'drive') item.style.display = 'none';
       });
     } else {
-      // Normal owner or authenticated drive mode
       if (newBtn) newBtn.style.display = 'flex';
       if (storageBox) storageBox.style.display = 'block';
       navItems.forEach(item => item.style.display = 'flex');
@@ -448,7 +671,7 @@ const Drive = {
   },
 
   renderFolderCard(folder) {
-    const isPublic = folder.is_public !== false;
+    const isPublic = folder.is_public === true;
     const canManage = !this.isPublicMode || this.isOwnerMode;
 
     return `
@@ -465,14 +688,19 @@ const Drive = {
           ${Icons.folder}
           <span class="folder-name" title="${folder.name}">${folder.name}</span>
         </div>
-        ${canManage ? `
-          <button class="vis-badge ${isPublic ? 'public' : 'private'}"
-                  onclick="Drive.toggleFolderVisibility(event, '${folder.id}')"
-                  title="Click to toggle Public / Private">
-            ${isPublic ? Icons.globe : Icons.lock}
-            <span>${isPublic ? 'Public' : 'Private'}</span>
+        <div class="folder-card-actions">
+          <button class="icon-btn-subtle" onclick="event.stopPropagation(); Drive.openShareFolderModal('${folder.id}')" title="Share folder">
+            ${Icons.share}
           </button>
-        ` : ''}
+          ${canManage ? `
+            <button class="vis-badge ${isPublic ? 'public' : 'private'}"
+                    onclick="Drive.toggleFolderVisibility(event, '${folder.id}')"
+                    title="Click to toggle Public / Private">
+              ${isPublic ? Icons.globe : Icons.lock}
+              <span>${isPublic ? 'Public' : 'Private'}</span>
+            </button>
+          ` : ''}
+        </div>
       </div>
     `;
   },
@@ -568,7 +796,7 @@ const Drive = {
       if (label) label.style.display = 'none';
       container.innerHTML = `
         <div style="text-align: center; padding: 48px 16px; color: #5f6368;">
-          <div style="margin-bottom: 12px;">${Icons.upload_cloud}</div>
+          <div style="margin-bottom: 12px;">${Icons.storage_drive}</div>
           <p style="font-size: 16px; font-weight: 500;">No ${this.isPublicMode ? this.currentTab : ''} files here</p>
           <p style="font-size: 13px; margin-top: 4px;">${this.isPublicMode && !this.isOwnerMode ? 'This profile has no public files shared in this folder.' : 'Drag and drop files to upload, or click "+ New"'}</p>
         </div>
@@ -590,6 +818,7 @@ const Drive = {
           <table class="files-table">
             <thead>
               <tr>
+                <th style="width: 38px;"></th>
                 <th>Name</th>
                 <th>Category</th>
                 <th>File Size</th>
@@ -605,16 +834,19 @@ const Drive = {
         </div>
       `;
     }
+
+    this.updateSelectedElementStyles();
   },
 
   // THUMBNAIL & CARD PREVIEW ENGINE (ZERO BROKEN ICONS)
   renderFileCard(file) {
     const isImg = file.category === 'image';
-    const isPublic = file.is_public !== false;
+    const isPublic = file.is_public === true;
     const canManage = !this.isPublicMode || this.isOwnerMode;
+    const isSelected = this.selectedFileIds.has(file.id);
 
     return `
-      <div class="file-card"
+      <div class="file-card ${isSelected ? 'selected' : ''}"
            data-id="${file.id}"
            draggable="${canManage}"
            ondragstart="Drive.onDragStart(event, '${file.id}')"
@@ -623,6 +855,13 @@ const Drive = {
            oncontextmenu="Drive.showContextMenu(event, '${file.id}')">
 
         <div class="file-card-preview">
+          <!-- Selection Checkbox -->
+          <div class="card-select-checkbox ${isSelected ? 'checked' : ''}"
+               onclick="Drive.toggleFileSelection(event, '${file.id}')"
+               title="Select item">
+            ${isSelected ? Icons.check : ''}
+          </div>
+
           <div class="preview-backdrop-icon">
             ${getFileIcon(file.category, file.extension)}
           </div>
@@ -661,16 +900,25 @@ const Drive = {
 
   renderFileRow(file) {
     const dateStr = file.created_at ? new Date(file.created_at).toLocaleDateString() : '';
-    const isPublic = file.is_public !== false;
+    const isPublic = file.is_public === true;
     const canManage = !this.isPublicMode || this.isOwnerMode;
+    const isSelected = this.selectedFileIds.has(file.id);
 
     return `
-      <tr data-id="${file.id}"
+      <tr class="${isSelected ? 'selected' : ''}"
+          data-id="${file.id}"
           draggable="${canManage}"
           ondragstart="Drive.onDragStart(event, '${file.id}')"
           ondragend="Drive.onDragEnd(event)"
           onclick="Drive.onFileClick(event, '${file.id}')"
           oncontextmenu="Drive.showContextMenu(event, '${file.id}')">
+        <td style="width: 38px;" onclick="event.stopPropagation()">
+          <div class="row-select-checkbox ${isSelected ? 'checked' : ''}"
+               onclick="Drive.toggleFileSelection(event, '${file.id}')"
+               title="Select item">
+            ${isSelected ? Icons.check : ''}
+          </div>
+        </td>
         <td>
           <div class="table-name-cell">
             ${getFileIcon(file.category, file.extension)}
@@ -700,7 +948,13 @@ const Drive = {
   },
 
   onFileClick(e, fileId) {
-    if (e.target.closest('.icon-btn') || e.target.closest('.vis-badge') || e.target.closest('.vis-badge-overlay')) return;
+    if (e.target.closest('.icon-btn') || e.target.closest('.vis-badge') || e.target.closest('.vis-badge-overlay') || e.target.closest('.card-select-checkbox') || e.target.closest('.row-select-checkbox')) return;
+
+    if (e.ctrlKey || e.metaKey || e.shiftKey || this.selectedFileIds.size > 0) {
+      this.toggleFileSelection(e, fileId);
+      return;
+    }
+
     const file = this.files.find(f => f.id === fileId);
     if (file) {
       Viewer.open(file);
@@ -709,6 +963,7 @@ const Drive = {
 
   openFolder(folderId) {
     this.currentFolderId = folderId;
+    this.clearSelection();
     this.reload();
   },
 
@@ -722,10 +977,14 @@ const Drive = {
   // ==========================================
   onDragStart(e, fileId) {
     this.draggedFileId = fileId;
-    e.dataTransfer.setData('application/x-haul-file', fileId);
+    const moveIds = this.selectedFileIds.has(fileId) ? Array.from(this.selectedFileIds) : [fileId];
+    e.dataTransfer.setData('application/x-haul-file', JSON.stringify(moveIds));
     e.dataTransfer.effectAllowed = 'move';
-    const card = document.querySelector(`[data-id="${fileId}"]`);
-    if (card) card.classList.add('dragging');
+
+    moveIds.forEach(id => {
+      const el = document.querySelector(`[data-id="${id}"]`);
+      if (el) el.classList.add('dragging');
+    });
   },
 
   onDragEnd(e) {
@@ -753,12 +1012,20 @@ const Drive = {
     const card = e.currentTarget;
     if (card) card.classList.remove('drag-over');
 
-    const fileId = this.draggedFileId || e.dataTransfer.getData('application/x-haul-file');
-    if (!fileId || fileId === targetFolderId) return;
+    let moveIds = [];
+    try {
+      const raw = e.dataTransfer.getData('application/x-haul-file');
+      moveIds = JSON.parse(raw);
+    } catch {
+      if (this.draggedFileId) moveIds = [this.draggedFileId];
+    }
+
+    if (!moveIds || !moveIds.length || moveIds.includes(targetFolderId)) return;
 
     try {
-      await API.moveFiles([fileId], targetFolderId);
-      this.showToast('Item moved successfully.');
+      await API.moveFiles(moveIds, targetFolderId);
+      this.showToast(`Moved ${moveIds.length} item(s) successfully.`);
+      this.clearSelection();
       this.reload();
     } catch (err) {
       this.showToast(err.message || 'Failed to move file', 'error');
@@ -780,12 +1047,20 @@ const Drive = {
     e.stopPropagation();
     e.currentTarget.classList.remove('drag-over');
 
-    const fileId = this.draggedFileId || e.dataTransfer.getData('application/x-haul-file');
-    if (!fileId) return;
+    let moveIds = [];
+    try {
+      const raw = e.dataTransfer.getData('application/x-haul-file');
+      moveIds = JSON.parse(raw);
+    } catch {
+      if (this.draggedFileId) moveIds = [this.draggedFileId];
+    }
+
+    if (!moveIds || !moveIds.length) return;
 
     try {
-      await API.moveFiles([fileId], targetFolderId);
-      this.showToast('Item moved successfully.');
+      await API.moveFiles(moveIds, targetFolderId);
+      this.showToast(`Moved ${moveIds.length} item(s) successfully.`);
+      this.clearSelection();
       this.reload();
     } catch (err) {
       this.showToast(err.message || 'Failed to move file', 'error');
@@ -831,8 +1106,8 @@ const Drive = {
   // ==========================================
   // MOVE TO MODAL DIALOG
   // ==========================================
-  async openMoveModal(itemId, itemType = 'file', itemName = 'item') {
-    this.moveTargetItem = { id: itemId, type: itemType, name: itemName };
+  async openMoveModal(itemIdOrIds, itemType = 'file', itemName = 'item') {
+    this.moveTargetItem = { id: itemIdOrIds, type: itemType, name: itemName };
     this.selectedMoveFolderId = null;
 
     const modal = document.getElementById('move-modal');
@@ -840,7 +1115,7 @@ const Drive = {
     const treeEl = document.getElementById('move-folder-tree');
     const confirmBtn = document.getElementById('move-confirm-btn');
 
-    if (titleEl) titleEl.textContent = `Move "${itemName}" to...`;
+    if (titleEl) titleEl.textContent = `Move ${itemName} to...`;
     if (confirmBtn) confirmBtn.disabled = true;
 
     if (treeEl) {
@@ -914,11 +1189,14 @@ const Drive = {
     try {
       if (type === 'folder') {
         await API.moveFolder(id, targetFolderId);
+      } else if (type === 'bulk') {
+        await API.moveFiles(id, targetFolderId);
+        this.clearSelection();
       } else {
         await API.moveFiles([id], targetFolderId);
       }
       this.closeMoveModal();
-      this.showToast(`Moved "${name}" successfully.`);
+      this.showToast(`Moved ${name} successfully.`);
       this.reload();
     } catch (err) {
       this.showToast(err.message || 'Failed to move item', 'error');
@@ -936,11 +1214,11 @@ const Drive = {
     const file = this.files.find(f => f.id === fileId);
     if (!file) return;
 
-    const newPublic = file.is_public === false ? true : false;
+    const newPublic = !file.is_public;
     try {
       await API.toggleFileVisibility(fileId, newPublic);
       file.is_public = newPublic;
-      this.showToast(`Moved to ${newPublic ? 'Public' : 'Private'}`);
+      this.showToast(`Set to ${newPublic ? 'Public' : 'Private'}`);
       if (this.isPublicMode) {
         this.loadPublicDrive();
       } else {
@@ -959,11 +1237,11 @@ const Drive = {
     const folder = this.folders.find(f => f.id === folderId);
     if (!folder) return;
 
-    const newPublic = folder.is_public === false ? true : false;
+    const newPublic = !folder.is_public;
     try {
       await API.toggleFolderVisibility(folderId, newPublic);
       folder.is_public = newPublic;
-      this.showToast(`Folder moved to ${newPublic ? 'Public' : 'Private'}`);
+      this.showToast(`Folder set to ${newPublic ? 'Public' : 'Private'}`);
       if (this.isPublicMode) {
         this.loadPublicDrive();
       } else {
@@ -990,7 +1268,7 @@ const Drive = {
 
     const isStarred = Boolean(file.is_starred);
     const isTrashed = Boolean(file.is_trashed);
-    const isPublic = file.is_public !== false;
+    const isPublic = file.is_public === true;
     const canManage = !this.isPublicMode || this.isOwnerMode;
 
     let html = `
@@ -1053,11 +1331,14 @@ const Drive = {
     if (!menu) return;
 
     const canManage = !this.isPublicMode || this.isOwnerMode;
-    const isPublic = folder.is_public !== false;
+    const isPublic = folder.is_public === true;
 
     let html = `
       <div class="context-menu-item" onclick="Drive.openFolder('${folder.id}')">
         ${Icons.folder_open} <span>Open folder</span>
+      </div>
+      <div class="context-menu-item" onclick="Drive.openShareFolderModal('${folder.id}')">
+        ${Icons.share} <span>Share folder</span>
       </div>
     `;
 
