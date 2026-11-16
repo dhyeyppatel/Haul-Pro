@@ -47,7 +47,13 @@ const Auth = {
         if (dropdown) dropdown.style.display = 'none';
         if (this.currentUser && this.currentUser.username) {
           history.pushState(null, '', `/${this.currentUser.username}`);
-          Drive.init();
+          Drive.isPublicMode = true;
+          Drive.profileUsername = this.currentUser.username;
+          Drive.currentTab = 'public';
+          Drive.currentFolderId = null;
+          Drive.page = 1;
+          Drive.clearSelection();
+          Drive.reload();
         }
       });
     }
@@ -272,6 +278,7 @@ const Auth = {
           this.setGuestMode();
           Drive.init();
         } else {
+          Drive.hideLoadingScreen();
           this.showLogin();
         }
       }
@@ -280,6 +287,7 @@ const Auth = {
         this.setGuestMode();
         Drive.init();
       } else {
+        Drive.hideLoadingScreen();
         this.showLogin();
       }
     }

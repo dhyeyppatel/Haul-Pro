@@ -1717,3 +1717,180 @@ tr.selected .row-select-checkbox {
   line-height: 1.45;
   margin: 0;
 }
+
+/* ==========================================
+   APP INITIAL LOADING SCREEN ANIMATION
+   ========================================== */
+.app-loading-screen {
+  position: fixed;
+  inset: 0;
+  background: var(--bg-primary);
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.app-loading-screen.fade-out {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.app-loading-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.app-loading-logo {
+  animation: pulseLogo 2s ease-in-out infinite;
+}
+
+@keyframes pulseLogo {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+
+.app-loading-title {
+  font-size: 22px;
+  font-weight: 500;
+  color: var(--text-primary);
+  letter-spacing: -0.3px;
+}
+
+.app-loading-bar {
+  width: 180px;
+  height: 4px;
+  background: #e8eaed;
+  border-radius: 2px;
+  overflow: hidden;
+  position: relative;
+}
+
+.app-loading-progress {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 35%;
+  background: var(--color-blue);
+  border-radius: 2px;
+  animation: indeterminateBar 1.4s infinite ease-in-out;
+}
+
+@keyframes indeterminateBar {
+  0% {
+    left: -35%;
+    width: 30%;
+  }
+  50% {
+    left: 35%;
+    width: 60%;
+  }
+  100% {
+    left: 100%;
+    width: 20%;
+  }
+}
+
+/* ==========================================
+   SKELETON SHIMMER & LOADERS
+   ========================================== */
+@keyframes skeletonShimmer {
+  0% {
+    background-position: -600px 0;
+  }
+  100% {
+    background-position: 600px 0;
+  }
+}
+
+.skeleton-shimmer {
+  background: linear-gradient(90deg, #f1f3f4 25%, #e8eaed 50%, #f1f3f4 75%) !important;
+  background-size: 1200px 100% !important;
+  animation: skeletonShimmer 1.6s infinite linear !important;
+  border-color: transparent !important;
+}
+
+.skeleton-card {
+  pointer-events: none;
+  user-select: none;
+  border-color: var(--border-subtle) !important;
+}
+
+.skeleton-row {
+  pointer-events: none;
+  user-select: none;
+}
+
+.drive-spinner {
+  width: 20px;
+  height: 20px;
+  border: 2.5px solid #dadce0;
+  border-top-color: var(--color-blue);
+  border-radius: 50%;
+  animation: driveSpin 0.75s infinite linear;
+  flex-shrink: 0;
+}
+
+@keyframes driveSpin {
+  to { transform: rotate(360deg); }
+}
+
+.infinite-loader {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 24px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.infinite-loader.hidden {
+  display: none;
+}
+
+/* ==========================================
+   PROFILE ACTION BUTTONS
+   ========================================== */
+.profile-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  border-radius: 8px;
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.profile-action-btn:hover {
+  background: var(--bg-hover);
+  border-color: #b8bdc2;
+}
+
+.profile-action-btn.primary {
+  background: var(--color-blue);
+  color: #ffffff;
+  border-color: var(--color-blue);
+}
+
+.profile-action-btn.primary:hover {
+  background: var(--color-blue-hover);
+  border-color: var(--color-blue-hover);
+}
+
+.profile-action-btn svg {
+  width: 15px;
+  height: 15px;
+  stroke: currentColor;
+}

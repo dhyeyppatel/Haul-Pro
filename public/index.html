@@ -11,6 +11,29 @@
 </head>
 <body>
 
+  <!-- APP INITIAL LOADING SCREEN -->
+  <div id="app-loading-screen" class="app-loading-screen">
+    <div class="app-loading-card">
+      <div class="app-loading-logo">
+        <svg width="52" height="52" viewBox="0 0 40 40" fill="none">
+          <defs>
+            <linearGradient id="g-loader" x1="4" y1="4" x2="36" y2="36" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stop-color="#1a73e8"/>
+              <stop offset="100%" stop-color="#0d47a1"/>
+            </linearGradient>
+          </defs>
+          <rect x="3" y="3" width="34" height="34" rx="10" fill="url(#g-loader)"/>
+          <path d="M12 11V29M28 11V29M12 20H28" stroke="white" stroke-width="3.5" stroke-linecap="round"/>
+          <circle cx="20" cy="13.5" r="2.2" fill="#00e5ff"/>
+        </svg>
+      </div>
+      <div class="app-loading-title">Haul Pro</div>
+      <div class="app-loading-bar">
+        <div class="app-loading-progress"></div>
+      </div>
+    </div>
+  </div>
+
   <!-- TOPBAR -->
   <header class="topbar">
     <div class="topbar-left">
@@ -53,10 +76,10 @@
           </div>
         </button>
 
-        <button id="profile-public-link-btn" class="profile-menu-item" title="Open and manage your public drive">
+        <button id="profile-public-link-btn" class="profile-menu-item" title="View your public profile">
           <span id="profile-globe-icon"></span>
           <div class="menu-item-text">
-            <div class="menu-item-title">Public Profile Manager</div>
+            <div class="menu-item-title">My Public Profile</div>
             <div id="profile-public-url-preview" class="menu-item-sub">Loading link...</div>
           </div>
         </button>
@@ -236,7 +259,8 @@
 
         <!-- Infinite Scroll Loading Indicator -->
         <div id="infinite-loader" class="infinite-loader hidden">
-          <span>Loading more items...</span>
+          <div class="drive-spinner"></div>
+          <span>Loading items...</span>
         </div>
       </div>
     </main>

@@ -22,7 +22,8 @@ const Drive = {
   profileUsername: null,
   isOwnerMode: false,
   publicProfileData: null,
-  currentTab: 'private', // Default to 'private' per user request
+  currentTab: 'public', // Default to 'public' so profiles show public files
+  eventsBound: false,
 
   // Move Modal State
   moveTargetItem: null, // { id, type: 'file' | 'folder' | 'bulk', name }
@@ -43,12 +44,20 @@ const Drive = {
     return firstSegment;
   },
 
+  hideLoadingScreen() {
+    const screen = document.getElementById('app-loading-screen');
+    if (!screen) return;
+    screen.classList.add('fade-out');
+    setTimeout(() => {
+      screen.style.display = 'none';
+    }, 350);
+  },
+
   init() {
     const username = this.getProfileUsernameFromUrl();
     if (username) {
       this.isPublicMode = true;
       this.profileUsername = username;
-      // If visitor, must be public; if owner, default tab can be private or public
       this.currentTab = 'public';
     } else {
       this.isPublicMode = false;
@@ -63,8 +72,12 @@ const Drive = {
       this.currentFolderId = urlFid;
     }
 
-    this.bindEvents();
-    this.bindModalEvents();
+    if (!this.eventsBound) {
+      this.bindEvents();
+      this.bindModalEvents();
+      this.eventsBound = true;
+    }
+
     this.reload();
   },
 
@@ -196,6 +209,24 @@ const Drive = {
         this.loadPublicDrive();
       });
     }
+
+    // Handle browser Forward / Back buttons
+    window.addEventListener('popstate', () => {
+      const username = this.getProfileUsernameFromUrl();
+      if (username) {
+        this.isPublicMode = true;
+        this.profileUsername = username;
+        this.currentTab = 'public';
+      } else {
+        this.isPublicMode = false;
+        this.profileUsername = null;
+        this.isOwnerMode = false;
+        this.currentTab = 'private';
+      }
+      this.currentFolderId = null;
+      this.clearSelection();
+      this.reload();
+    });
   },
 
   bindModalEvents() {
@@ -255,12 +286,16 @@ const Drive = {
     this.selectedFile = null;
     this.clearSelection();
 
-    if (this.isPublicMode) {
-      await this.loadPublicDrive();
-    } else {
-      this.hidePublicProfileBanner();
-      await this.loadFolders();
-      await this.loadFiles(1);
+    try {
+      if (this.isPublicMode) {
+        await this.loadPublicDrive();
+      } else {
+        this.hidePublicProfileBanner();
+        await this.loadFolders();
+        await this.loadFiles(1);
+      }
+    } finally {
+      this.hideLoadingScreen();
     }
   },
 
@@ -270,10 +305,14 @@ const Drive = {
     this.hasMore = true;
     this.clearSelection();
 
-    if (this.isPublicMode) {
-      await this.loadPublicDrive();
-    } else {
-      await this.loadFiles(1);
+    try {
+      if (this.isPublicMode) {
+        await this.loadPublicDrive();
+      } else {
+        await this.loadFiles(1);
+      }
+    } finally {
+      this.hideLoadingScreen();
     }
   },
 
@@ -466,6 +505,14 @@ const Drive = {
     const backBtn = document.getElementById('owner-back-drive-btn');
     const loader = document.getElementById('infinite-loader');
 
+    if (this.page === 1) {
+      if (!this.publicProfileData) {
+        this.renderProfileSkeleton();
+      }
+      this.renderFoldersSkeleton();
+      this.renderFilesSkeleton();
+    }
+
     if (loader) loader.classList.remove('hidden');
 
     const params = {
@@ -628,6 +675,115 @@ const Drive = {
   },
 
   // ==========================================
+  // SKELETON LOADERS
+  // ==========================================
+  renderProfileSkeleton() {
+    const banner = document.getElementById('public-profile-banner');
+    if (!banner) return;
+    banner.style.display = 'block';
+
+    const avatarImg = document.getElementById('public-avatar-img');
+    const avatarInitial = document.getElementById('public-avatar-initial');
+    const avatarWrap = document.getElementById('public-profile-avatar');
+    const nameEl = document.getElementById('public-profile-name');
+    const unameEl = document.getElementById('public-profile-username');
+    const bioEl = document.getElementById('public-profile-bio');
+    const countEl = document.getElementById('public-profile-file-count');
+
+    if (avatarImg) avatarImg.style.display = 'none';
+    if (avatarWrap) avatarWrap.style.backgroundColor = 'transparent';
+    if (avatarInitial) {
+      avatarInitial.textContent = '';
+      avatarInitial.className = 'skeleton-shimmer';
+      avatarInitial.style.display = 'block';
+      avatarInitial.style.borderRadius = '50%';
+      avatarInitial.style.width = '100%';
+      avatarInitial.style.height = '100%';
+    }
+    if (nameEl) nameEl.innerHTML = '<span class="skeleton-shimmer" style="display: inline-block; width: 140px; height: 22px; border-radius: 4px;"></span>';
+    if (unameEl) unameEl.innerHTML = '<span class="skeleton-shimmer" style="display: inline-block; width: 80px; height: 16px; border-radius: 12px;"></span>';
+    if (bioEl) {
+      bioEl.style.display = 'block';
+      bioEl.innerHTML = '<span class="skeleton-shimmer" style="display: inline-block; width: 220px; height: 14px; border-radius: 4px;"></span>';
+    }
+    if (countEl) countEl.innerHTML = '<span class="skeleton-shimmer" style="display: inline-block; width: 60px; height: 14px; border-radius: 4px;"></span>';
+  },
+
+  renderFoldersSkeleton() {
+    const foldersSection = document.getElementById('folders-section');
+    const foldersGrid = document.getElementById('folders-grid');
+    if (!foldersSection || !foldersGrid) return;
+
+    foldersSection.style.display = 'block';
+    foldersGrid.innerHTML = Array(4).fill(0).map(() => `
+      <div class="folder-card skeleton-card">
+        <div class="folder-card-main">
+          <div class="skeleton-shimmer" style="width: 20px; height: 20px; border-radius: 4px; flex-shrink: 0;"></div>
+          <div class="skeleton-shimmer" style="width: 100px; height: 14px; border-radius: 4px;"></div>
+        </div>
+      </div>
+    `).join('');
+  },
+
+  renderFilesSkeleton() {
+    const container = document.getElementById('files-container');
+    const label = document.getElementById('files-section-label');
+    if (!container) return;
+    if (label) label.style.display = 'block';
+
+    if (this.currentView === 'grid') {
+      container.innerHTML = `
+        <div class="files-grid">
+          ${Array(8).fill(0).map(() => `
+            <div class="file-card skeleton-card">
+              <div class="file-card-preview skeleton-shimmer" style="height: 140px;"></div>
+              <div class="file-card-footer">
+                <div class="skeleton-shimmer" style="width: 20px; height: 20px; border-radius: 4px; flex-shrink: 0;"></div>
+                <div class="file-card-info" style="display: flex; flex-direction: column; gap: 6px; flex: 1;">
+                  <div class="skeleton-shimmer" style="width: 75%; height: 13px; border-radius: 3px;"></div>
+                  <div class="skeleton-shimmer" style="width: 40%; height: 11px; border-radius: 3px;"></div>
+                </div>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      `;
+    } else {
+      container.innerHTML = `
+        <table class="files-table">
+          <thead>
+            <tr>
+              <th style="width: 38px;"></th>
+              <th>Name</th>
+              <th>Owner</th>
+              <th>Last modified</th>
+              <th>File size</th>
+              <th style="width: 48px;"></th>
+            </tr>
+          </thead>
+          <tbody>
+            ${Array(6).fill(0).map(() => `
+              <tr class="skeleton-row">
+                <td style="width: 38px;"><div class="skeleton-shimmer" style="width: 18px; height: 18px; border-radius: 4px;"></div></td>
+                <td>
+                  <div style="display: flex; align-items: center; gap: 12px;">
+                    <div class="skeleton-shimmer" style="width: 20px; height: 20px; border-radius: 4px; flex-shrink: 0;"></div>
+                    <div class="skeleton-shimmer" style="width: 160px; height: 14px; border-radius: 4px;"></div>
+                  </div>
+                </td>
+                <td><div class="skeleton-shimmer" style="width: 50px; height: 12px; border-radius: 4px;"></div></td>
+                <td><div class="skeleton-shimmer" style="width: 70px; height: 12px; border-radius: 4px;"></div></td>
+                <td><div class="skeleton-shimmer" style="width: 45px; height: 12px; border-radius: 4px;"></div></td>
+                <td></td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      `;
+    }
+  },
+
+  // ==========================================
   // STANDARD FOLDERS & FILES LOADER
   // ==========================================
   async loadFolders() {
@@ -638,6 +794,8 @@ const Drive = {
       foldersSection.style.display = 'none';
       return;
     }
+
+    this.renderFoldersSkeleton();
 
     const params = {
       parentId: this.currentFolderId || 'root',
@@ -746,8 +904,12 @@ const Drive = {
     if (this.isLoading) return;
     this.isLoading = true;
 
+    if (page === 1) {
+      this.renderFilesSkeleton();
+    }
+
     const loader = document.getElementById('infinite-loader');
-    if (loader) loader.classList.remove('hidden');
+    if (loader && page > 1) loader.classList.remove('hidden');
 
     const params = {
       page: page,
