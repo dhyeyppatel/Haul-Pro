@@ -29,6 +29,7 @@
     </div>
 
     <div class="topbar-right">
+      <button id="topbar-signin-btn" class="topbar-signin-btn" style="display: none;">Sign in</button>
       <button id="user-profile-btn" class="user-profile-btn" title="Haul Account">U</button>
       
       <!-- User Profile Dropdown -->
@@ -36,6 +37,27 @@
         <div id="profile-avatar-lg" class="profile-avatar-lg">U</div>
         <div id="profile-name" class="profile-name">User</div>
         <div id="profile-email" class="profile-email">user@haul.pro</div>
+        <div id="profile-username-tag" class="profile-username-tag">@username</div>
+
+        <div class="profile-dropdown-divider"></div>
+
+        <button id="profile-public-link-btn" class="profile-menu-item" title="Open and manage your public drive">
+          <span id="profile-globe-icon"></span>
+          <div class="menu-item-text">
+            <div class="menu-item-title">Public Profile Manager</div>
+            <div id="profile-public-url-preview" class="menu-item-sub">Loading link...</div>
+          </div>
+        </button>
+
+        <button id="profile-copy-url-btn" class="profile-menu-item" title="Copy link to your public profile">
+          <span id="profile-link-icon"></span>
+          <div class="menu-item-text">
+            <div class="menu-item-title">Copy Public Link</div>
+            <div class="menu-item-sub">Share with friends or audience</div>
+          </div>
+        </button>
+
+        <div class="profile-dropdown-divider"></div>
         <button id="profile-logout-btn" class="profile-logout-btn">Sign out</button>
       </div>
     </div>
@@ -102,6 +124,39 @@
 
     <!-- MAIN CONTENT EXPLORER -->
     <main class="main-content">
+      <!-- Public Profile Header Banner -->
+      <div id="public-profile-banner" class="public-profile-banner" style="display: none;">
+        <div class="public-profile-info">
+          <div id="public-profile-avatar" class="public-profile-avatar">U</div>
+          <div class="public-profile-meta">
+            <div class="public-profile-name-row">
+              <h2 id="public-profile-name" class="public-profile-name">User Name</h2>
+              <span id="public-profile-badge" class="public-profile-badge">Public Drive</span>
+            </div>
+            <div class="public-profile-sub">
+              <span id="public-profile-username" class="public-profile-username">@username</span>
+              <span class="dot-separator">•</span>
+              <span id="public-profile-file-count" class="public-profile-stat">0 files</span>
+            </div>
+          </div>
+        </div>
+        <div class="public-profile-actions">
+          <button id="copy-public-profile-link-btn" class="profile-action-btn">
+            <span id="profile-share-icon-holder"></span>
+            <span>Share Profile</span>
+          </button>
+          <button id="owner-back-drive-btn" class="profile-action-btn primary" style="display: none;">
+            <span>Back to My Drive</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Owner Mode Info Bar -->
+      <div id="owner-mode-bar" class="owner-mode-bar" style="display: none;">
+        <span id="owner-bar-icon"></span>
+        <span>Owner Mode: You are viewing your public profile. Click any item's visibility badge to toggle Public / Private access.</span>
+      </div>
+
       <!-- Breadcrumbs & View Toggle Toolbar -->
       <div class="toolbar">
         <div id="breadcrumbs" class="breadcrumbs">
@@ -229,6 +284,45 @@
     </div>
   </div>
 
+  <!-- NEW FOLDER MODAL -->
+  <div id="new-folder-modal" class="modal-backdrop" style="display: none;">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 class="modal-title">New folder</h3>
+      </div>
+      <div class="modal-body">
+        <input type="text" id="new-folder-input" class="modal-input" placeholder="Folder name" value="Untitled folder" autocomplete="off">
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn-text" id="new-folder-cancel-btn">Cancel</button>
+        <button type="button" class="btn-filled" id="new-folder-create-btn">Create</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MOVE ITEM MODAL -->
+  <div id="move-modal" class="modal-backdrop" style="display: none;">
+    <div class="modal-card modal-card-wide">
+      <div class="modal-header">
+        <h3 class="modal-title" id="move-modal-title">Move item</h3>
+        <button type="button" class="icon-btn" id="move-modal-close-btn" style="width: 32px; height: 32px;">
+          <span id="move-modal-close-icon"></span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="move-modal-hint">Select a destination folder:</div>
+        <div id="move-folder-tree" class="folder-picker-list"></div>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn-text" id="move-cancel-btn">Cancel</button>
+        <button type="button" class="btn-filled" id="move-confirm-btn" disabled>Move here</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST CONTAINER -->
+  <div id="toast-container" class="toast-container"></div>
+
   <!-- SCRIPTS -->
   <script src="/js/icons.js"></script>
   <script src="/js/api.js"></script>
@@ -259,6 +353,17 @@
       document.getElementById('viewer-download-icon').innerHTML = Icons.download;
       document.getElementById('viewer-link-icon').innerHTML = Icons.link;
       document.getElementById('toggle-view-btn').innerHTML = Icons.view_list;
+
+      const profileGlobe = document.getElementById('profile-globe-icon');
+      if (profileGlobe) profileGlobe.innerHTML = Icons.globe;
+      const profileLink = document.getElementById('profile-link-icon');
+      if (profileLink) profileLink.innerHTML = Icons.link;
+      const shareIconHolder = document.getElementById('profile-share-icon-holder');
+      if (shareIconHolder) shareIconHolder.innerHTML = Icons.link;
+      const ownerBarIcon = document.getElementById('owner-bar-icon');
+      if (ownerBarIcon) ownerBarIcon.innerHTML = Icons.info;
+      const moveCloseIcon = document.getElementById('move-modal-close-icon');
+      if (moveCloseIcon) moveCloseIcon.innerHTML = Icons.close;
 
       // Start controllers
       Auth.init();

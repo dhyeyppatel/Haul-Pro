@@ -173,5 +173,41 @@ const API = {
 
   async deleteFile(fileId, permanent = false) {
     return this.request(`/api/files/${fileId}?permanent=${permanent}`, { method: 'DELETE' });
+  },
+
+  // Move APIs
+  async moveFiles(fileIds, targetFolderId = null) {
+    return this.request('/api/files/move', {
+      method: 'POST',
+      body: { fileIds: Array.isArray(fileIds) ? fileIds : [fileIds], targetFolderId }
+    });
+  },
+
+  async moveFolder(folderId, targetParentId = null) {
+    return this.request('/api/folders/move', {
+      method: 'POST',
+      body: { folderId, targetParentId }
+    });
+  },
+
+  // Visibility APIs (Public Profile Toggle)
+  async toggleFileVisibility(fileId, isPublic) {
+    return this.request(`/api/files/${fileId}/visibility`, {
+      method: 'PATCH',
+      body: { isPublic }
+    });
+  },
+
+  async toggleFolderVisibility(folderId, isPublic) {
+    return this.request(`/api/folders/${folderId}/visibility`, {
+      method: 'PATCH',
+      body: { isPublic }
+    });
+  },
+
+  // Public Profile API (/<username>)
+  async getPublicProfile(username, params = {}) {
+    const query = new URLSearchParams(params).toString();
+    return this.request(`/api/public/${encodeURIComponent(username)}?${query}`);
   }
 };

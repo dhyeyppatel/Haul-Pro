@@ -49,7 +49,7 @@ const Viewer = {
 
     if (category === 'image') {
       zoomControls.style.display = 'flex';
-      bodyEl.innerHTML = `<img id="viewer-img-el" class="viewer-image" src="${url}" alt="${file.name}">`;
+      bodyEl.innerHTML = `<img id="viewer-img-el" class="viewer-image" src="${url}" alt="${file.name}" referrerpolicy="no-referrer">`;
     } else if (category === 'book' || file.extension === 'pdf') {
       bodyEl.innerHTML = `<iframe class="viewer-pdf-frame" src="${url}#toolbar=1&navpanes=1"></iframe>`;
     } else if (category === 'video') {

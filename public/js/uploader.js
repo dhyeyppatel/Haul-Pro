@@ -13,12 +13,15 @@ const Uploader = {
     let dragCounter = 0;
 
     window.addEventListener('dragenter', (e) => {
+      // Do not trigger file drop overlay if dragging internal drive items
+      if (Drive.draggedFileId || !e.dataTransfer.types.includes('Files')) return;
       e.preventDefault();
       dragCounter++;
       if (overlay) overlay.classList.add('active');
     });
 
     window.addEventListener('dragleave', (e) => {
+      if (Drive.draggedFileId) return;
       e.preventDefault();
       dragCounter--;
       if (dragCounter <= 0 && overlay) {
@@ -28,10 +31,12 @@ const Uploader = {
     });
 
     window.addEventListener('dragover', (e) => {
+      if (Drive.draggedFileId || !e.dataTransfer.types.includes('Files')) return;
       e.preventDefault();
     });
 
     window.addEventListener('drop', (e) => {
+      if (Drive.draggedFileId) return;
       e.preventDefault();
       dragCounter = 0;
       if (overlay) overlay.classList.remove('active');
@@ -81,7 +86,7 @@ const Uploader = {
     const menuNewFolder = document.getElementById('menu-new-folder');
     if (menuNewFolder) {
       menuNewFolder.addEventListener('click', () => {
-        Drive.promptNewFolder();
+        Drive.openNewFolderModal();
       });
     }
   },

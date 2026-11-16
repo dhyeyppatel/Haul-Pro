@@ -149,6 +149,18 @@ def register():
         if existing:
             return jsonify({"success": False, "error": "An account with this email already exists."}), 400
 
+        # Unique username generation / sanitization
+        raw_user = (data.get("username") or email.split("@")[0]).strip().lower()
+        clean_user = re.sub(r'[^a-z0-9_-]', '', raw_user)
+        if not clean_user:
+            clean_user = "user" + str(int(datetime.datetime.utcnow().timestamp()))
+        
+        username = clean_user
+        idx = 1
+        while database.users.find_one({"username": username}):
+            username = f"{clean_user}{idx}"
+            idx += 1
+
         salt = bcrypt.gensalt(10)
         password_hash = bcrypt.hashpw(password.encode("utf-8"), salt).decode("utf-8")
 
@@ -158,6 +170,7 @@ def register():
         now = datetime.datetime.utcnow()
         user_doc = {
             "name": name,
+            "username": username,
             "email": email,
             "password_hash": password_hash,
             "avatar_color": avatar_color,
@@ -176,6 +189,7 @@ def register():
             "user": {
                 "id": str(user_id),
                 "name": name,
+                "username": username,
                 "email": email,
                 "avatar_color": avatar_color,
                 "storage_used_bytes": 0,
@@ -206,6 +220,17 @@ def login():
         if not bcrypt.checkpw(password.encode("utf-8"), user["password_hash"].encode("utf-8")):
             return jsonify({"success": False, "error": "Invalid email or password."}), 401
 
+        # Backfill username if missing
+        username = user.get("username")
+        if not username:
+            clean_user = re.sub(r'[^a-z0-9_-]', '', user["email"].split("@")[0].lower()) or "user"
+            username = clean_user
+            idx = 1
+            while database.users.find_one({"username": username, "_id": {"$ne": user["_id"]}}):
+                username = f"{clean_user}{idx}"
+                idx += 1
+            database.users.update_one({"_id": user["_id"]}, {"$set": {"username": username}})
+
         token = create_token(user["_id"], user["email"], user["name"])
         resp = make_response(jsonify({
             "success": True,
@@ -213,6 +238,7 @@ def login():
             "user": {
                 "id": str(user["_id"]),
                 "name": user["name"],
+                "username": username,
                 "email": user["email"],
                 "avatar_color": user.get("avatar_color", "#1a73e8"),
                 "storage_used_bytes": user.get("storage_used_bytes", 0),
@@ -242,11 +268,17 @@ def get_me():
     if not user:
         return jsonify({"success": False, "error": "User not found"}), 404
 
+    username = user.get("username")
+    if not username:
+        username = re.sub(r'[^a-z0-9_-]', '', user["email"].split("@")[0].lower()) or "user"
+        database.users.update_one({"_id": user["_id"]}, {"$set": {"username": username}})
+
     return jsonify({
         "success": True,
         "user": {
             "id": str(user["_id"]),
             "name": user["name"],
+            "username": username,
             "email": user["email"],
             "avatar_color": user.get("avatar_color", "#1a73e8"),
             "storage_used_bytes": user.get("storage_used_bytes", 0),
@@ -325,6 +357,7 @@ def create_folder():
         "user_id": user_id,
         "parent_id": parent_id,
         "color": color,
+        "is_public": True,
         "is_starred": False,
         "is_trashed": False,
         "created_at": now,
@@ -393,6 +426,68 @@ def delete_folder(folder_id):
 
     return jsonify({"success": True, "message": "Folder deleted."})
 
+@app.route("/api/folders/move", methods=["POST"])
+def move_folder():
+    auth_user = authenticate()
+    if not auth_user:
+        return jsonify({"success": False, "error": "Unauthorized"}), 401
+
+    data = request.get_json() or {}
+    folder_id = data.get("folderId")
+    target_param = data.get("targetParentId")
+
+    if not folder_id:
+        return jsonify({"success": False, "error": "Folder ID is required."}), 400
+
+    try:
+        fid = ObjectId(folder_id)
+        target_pid = ObjectId(target_param) if target_param and target_param not in ("root", "null") else None
+    except Exception:
+        return jsonify({"success": False, "error": "Invalid folder ID format."}), 400
+
+    if target_pid and target_pid == fid:
+        return jsonify({"success": False, "error": "Cannot move a folder into itself."}), 400
+
+    database = get_db()
+    user_id = ObjectId(auth_user["id"])
+
+    database.folders.update_one(
+        {"_id": fid, "user_id": user_id},
+        {"$set": {"parent_id": target_pid, "updated_at": datetime.datetime.utcnow()}}
+    )
+    return jsonify({"success": True, "message": "Folder moved successfully."})
+
+@app.route("/api/folders/<folder_id>/visibility", methods=["PATCH"])
+def toggle_folder_visibility(folder_id):
+    auth_user = authenticate()
+    if not auth_user:
+        return jsonify({"success": False, "error": "Unauthorized"}), 401
+
+    data = request.get_json() or {}
+    is_public = bool(data.get("isPublic", True))
+
+    try:
+        fid = ObjectId(folder_id)
+    except Exception:
+        return jsonify({"success": False, "error": "Invalid folder ID"}), 400
+
+    database = get_db()
+    user_id = ObjectId(auth_user["id"])
+
+    res = database.folders.find_one_and_update(
+        {"_id": fid, "user_id": user_id},
+        {"$set": {"is_public": is_public, "updated_at": datetime.datetime.utcnow()}},
+        return_document=True
+    )
+    if not res:
+        return jsonify({"success": False, "error": "Folder not found."}), 404
+
+    database.files.update_many(
+        {"folder_id": fid, "user_id": user_id},
+        {"$set": {"is_public": is_public}}
+    )
+    return jsonify({"success": True, "folder": serialize_doc(res)})
+
 # ==========================================
 # FILE ENDPOINTS (UPLOAD VIA COMMONTHREAD ENGINE, PRE-LOAD PAGINATION)
 # ==========================================
@@ -460,6 +555,7 @@ def upload_files():
             "category": category,
             "hosted_url": hosted_url,
             "delete_token": delete_token,
+            "is_public": True,
             "is_starred": False,
             "is_trashed": False,
             "tags": [],
@@ -625,6 +721,146 @@ def delete_file(file_id):
             pass
 
     return jsonify({"success": True, "message": "Permanently deleted."})
+
+@app.route("/api/files/move", methods=["POST"])
+def move_files():
+    auth_user = authenticate()
+    if not auth_user:
+        return jsonify({"success": False, "error": "Unauthorized"}), 401
+
+    data = request.get_json() or {}
+    file_ids = data.get("fileIds") or []
+    target_param = data.get("targetFolderId")
+    target_fid = ObjectId(target_param) if target_param and target_param not in ("root", "null") else None
+
+    if not file_ids:
+        return jsonify({"success": False, "error": "No files selected to move."}), 400
+
+    database = get_db()
+    user_id = ObjectId(auth_user["id"])
+    obj_ids = [ObjectId(f) for f in file_ids if f]
+
+    database.files.update_many(
+        {"_id": {"$in": obj_ids}, "user_id": user_id},
+        {"$set": {"folder_id": target_fid, "updated_at": datetime.datetime.utcnow()}}
+    )
+    return jsonify({"success": True, "message": f"Successfully moved {len(obj_ids)} file(s)."})
+
+@app.route("/api/files/<file_id>/visibility", methods=["PATCH"])
+def toggle_file_visibility(file_id):
+    auth_user = authenticate()
+    if not auth_user:
+        return jsonify({"success": False, "error": "Unauthorized"}), 401
+
+    data = request.get_json() or {}
+    is_public = bool(data.get("isPublic", True))
+
+    try:
+        fid = ObjectId(file_id)
+    except Exception:
+        return jsonify({"success": False, "error": "Invalid file ID"}), 400
+
+    database = get_db()
+    user_id = ObjectId(auth_user["id"])
+
+    res = database.files.find_one_and_update(
+        {"_id": fid, "user_id": user_id},
+        {"$set": {"is_public": is_public, "updated_at": datetime.datetime.utcnow()}},
+        return_document=True
+    )
+    if not res:
+        return jsonify({"success": False, "error": "File not found."}), 404
+
+    return jsonify({"success": True, "file": serialize_doc(res)})
+
+# ==========================================
+# PUBLIC PROFILE ENDPOINT (/<username>)
+# ==========================================
+
+@app.route("/api/public/<username>", methods=["GET"])
+def get_public_profile(username):
+    uname = (username or "").strip().lower()
+    database = get_db()
+
+    user = database.users.find_one({"username": uname})
+    if not user:
+        # Fallback check if user email prefix matches
+        user = database.users.find_one({"email": {"$regex": f"^{re.escape(uname)}@", "$options": "i"}})
+
+    if not user:
+        return jsonify({"success": False, "error": f"User '@{uname}' was not found."}), 404
+
+    auth_user = authenticate()
+    is_owner = auth_user is not None and str(user["_id"]) == auth_user.get("id")
+
+    parent_param = request.args.get("parentId")
+    parent_id = ObjectId(parent_param) if parent_param and parent_param not in ("root", "null") else None
+
+    # Folder query
+    folder_query = {"user_id": user["_id"], "is_trashed": False, "parent_id": parent_id}
+    if not is_owner:
+        folder_query["is_public"] = {"$ne": False}
+
+    folders_cursor = database.folders.find(folder_query).sort("name", 1)
+    folders = [serialize_doc(f) for f in folders_cursor]
+
+    # Files query with pagination (15-20 per page)
+    try:
+        page = max(1, int(request.args.get("page", 1)))
+        limit = max(1, min(50, int(request.args.get("limit", 20))))
+    except ValueError:
+        page, limit = 1, 20
+    skip = (page - 1) * limit
+
+    file_query = {"user_id": user["_id"], "is_trashed": False, "folder_id": parent_id}
+    if not is_owner:
+        file_query["is_public"] = {"$ne": False}
+
+    category = request.args.get("category")
+    if category and category != "all":
+        file_query["category"] = category
+
+    search = (request.args.get("search") or "").strip()
+    if search:
+        file_query["$or"] = [
+            {"name": {"$regex": re.escape(search), "$options": "i"}},
+            {"extension": {"$regex": re.escape(search), "$options": "i"}}
+        ]
+
+    total_count = database.files.count_documents(file_query)
+    files_cursor = database.files.find(file_query).sort("created_at", -1).skip(skip).limit(limit)
+    files = [serialize_doc(f) for f in files_cursor]
+
+    breadcrumbs = [{"id": None, "name": f"{user['name']}'s Drive"}]
+    if parent_id:
+        path = []
+        curr = database.folders.find_one({"_id": parent_id, "user_id": user["_id"]})
+        while curr:
+            path.insert(0, {"id": str(curr["_id"]), "name": curr["name"]})
+            if curr.get("parent_id"):
+                curr = database.folders.find_one({"_id": curr["parent_id"], "user_id": user["_id"]})
+            else:
+                curr = None
+        breadcrumbs.extend(path)
+
+    return jsonify({
+        "success": True,
+        "profile": {
+            "name": user["name"],
+            "username": user.get("username", uname),
+            "avatar_color": user.get("avatar_color", "#1a73e8"),
+            "created_at": user.get("created_at").isoformat() if isinstance(user.get("created_at"), datetime.datetime) else None,
+            "total_public_files": total_count
+        },
+        "is_owner": is_owner,
+        "folders": folders,
+        "files": files,
+        "breadcrumbs": breadcrumbs,
+        "page": page,
+        "limit": limit,
+        "total_count": total_count,
+        "has_more": (skip + len(files)) < total_count
+    })
 
 # ==========================================
 # STATIC FRONTEND ROUTES (FOR LOCAL DEV & DIRECT VERCEL SERVING)

@@ -14,6 +14,9 @@ const Auth = {
     const switchModeBtn = document.getElementById('auth-switch-mode-btn');
     const profileBtn = document.getElementById('user-profile-btn');
     const logoutBtn = document.getElementById('profile-logout-btn');
+    const topbarSigninBtn = document.getElementById('topbar-signin-btn');
+    const profilePublicBtn = document.getElementById('profile-public-link-btn');
+    const profileCopyBtn = document.getElementById('profile-copy-url-btn');
 
     if (authForm) {
       authForm.addEventListener('submit', (e) => this.handleSubmit(e));
@@ -30,6 +33,35 @@ const Auth = {
       });
     }
 
+    if (topbarSigninBtn) {
+      topbarSigninBtn.addEventListener('click', () => {
+        this.showLogin();
+      });
+    }
+
+    if (profilePublicBtn) {
+      profilePublicBtn.addEventListener('click', () => {
+        const dropdown = document.getElementById('profile-dropdown');
+        if (dropdown) dropdown.style.display = 'none';
+        if (this.currentUser && this.currentUser.username) {
+          window.location.href = `/${this.currentUser.username}`;
+        }
+      });
+    }
+
+    if (profileCopyBtn) {
+      profileCopyBtn.addEventListener('click', () => {
+        const dropdown = document.getElementById('profile-dropdown');
+        if (dropdown) dropdown.style.display = 'none';
+        if (this.currentUser && this.currentUser.username) {
+          const publicUrl = `${window.location.origin}/${this.currentUser.username}`;
+          navigator.clipboard.writeText(publicUrl).then(() => {
+            Drive.showToast('Public profile link copied to clipboard!');
+          });
+        }
+      });
+    }
+
     if (logoutBtn) {
       logoutBtn.addEventListener('click', () => this.handleLogout());
     }
@@ -41,6 +73,7 @@ const Auth = {
   },
 
   async checkSession() {
+    const isProfilePath = Drive.getProfileUsernameFromUrl();
     try {
       const data = await API.getMe();
       if (data.success && data.user) {
@@ -48,11 +81,30 @@ const Auth = {
         this.hideModal();
         Drive.init();
       } else {
-        this.showLogin();
+        if (isProfilePath) {
+          this.setGuestMode();
+          Drive.init();
+        } else {
+          this.showLogin();
+        }
       }
     } catch (e) {
-      this.showLogin();
+      if (isProfilePath) {
+        this.setGuestMode();
+        Drive.init();
+      } else {
+        this.showLogin();
+      }
     }
+  },
+
+  setGuestMode() {
+    this.currentUser = null;
+    const profileBtn = document.getElementById('user-profile-btn');
+    const signinBtn = document.getElementById('topbar-signin-btn');
+    if (profileBtn) profileBtn.style.display = 'none';
+    if (signinBtn) signinBtn.style.display = 'block';
+    this.hideModal();
   },
 
   setCurrentUser(user) {
@@ -60,18 +112,30 @@ const Auth = {
     const initial = (user.name || user.email || 'U').charAt(0).toUpperCase();
 
     const profileBtn = document.getElementById('user-profile-btn');
+    const signinBtn = document.getElementById('topbar-signin-btn');
     if (profileBtn) {
+      profileBtn.style.display = 'flex';
       profileBtn.textContent = initial;
       if (user.avatar_color) profileBtn.style.backgroundColor = user.avatar_color;
     }
+    if (signinBtn) signinBtn.style.display = 'none';
 
     const dropdownAvatar = document.getElementById('profile-avatar-lg');
     const dropdownName = document.getElementById('profile-name');
     const dropdownEmail = document.getElementById('profile-email');
+    const dropdownUserTag = document.getElementById('profile-username-tag');
+    const dropdownUrlPreview = document.getElementById('profile-public-url-preview');
 
-    if (dropdownAvatar) dropdownAvatar.textContent = initial;
+    if (dropdownAvatar) {
+      dropdownAvatar.textContent = initial;
+      if (user.avatar_color) dropdownAvatar.style.backgroundColor = user.avatar_color;
+    }
     if (dropdownName) dropdownName.textContent = user.name || 'User';
     if (dropdownEmail) dropdownEmail.textContent = user.email || '';
+    if (dropdownUserTag) dropdownUserTag.textContent = `@${user.username || 'user'}`;
+    if (dropdownUrlPreview) {
+      dropdownUrlPreview.textContent = `${window.location.origin}/${user.username || 'user'}`;
+    }
 
     this.updateStorageMeter(user.storage_used_bytes, user.storage_limit_bytes);
   },
