@@ -21,6 +21,11 @@ HAUL_MEDIA_API_KEY = os.getenv("HAUL_MEDIA_API_KEY", "ct_dev_bbd2ae65abc5464d796
 app = Flask(__name__, static_folder="../public", static_url_path="")
 CORS(app, supports_credentials=True)
 
+@app.errorhandler(Exception)
+def handle_exception(e):
+    print("Unhandled Server Exception:", e)
+    return jsonify({"success": False, "error": str(e)}), 500
+
 # MongoDB client initialization
 mongo_client = None
 db = None
@@ -29,9 +34,14 @@ def get_db():
     global mongo_client, db
     if db is None:
         mongo_client = MongoClient(MONGODB_URI, serverSelectionTimeoutMS=5000)
-        db = mongo_client.get_default_database()
-        if db is None or db.name == 'admin':
-            db = mongo_client['haul_pro']
+        try:
+            db = mongo_client.get_default_database("haul_pro")
+        except Exception:
+            db = mongo_client["haul_pro"]
+
+        if db is None or db.name in ("admin", "local", "config"):
+            db = mongo_client["haul_pro"]
+
         # Ensure indexes
         try:
             db.users.create_index("email", unique=True)
@@ -123,89 +133,97 @@ def serialize_doc(doc):
 
 @app.route("/api/auth/register", methods=["POST"])
 def register():
-    data = request.get_json() or {}
-    name = (data.get("name") or "").strip()
-    email = (data.get("email") or "").strip().lower()
-    password = data.get("password") or ""
+    try:
+        data = request.get_json() or {}
+        name = (data.get("name") or "").strip()
+        email = (data.get("email") or "").strip().lower()
+        password = data.get("password") or ""
 
-    if not name or not email or not password:
-        return jsonify({"success": False, "error": "Name, email, and password are required."}), 400
-    if len(password) < 6:
-        return jsonify({"success": False, "error": "Password must be at least 6 characters long."}), 400
+        if not name or not email or not password:
+            return jsonify({"success": False, "error": "Name, email, and password are required."}), 400
+        if len(password) < 6:
+            return jsonify({"success": False, "error": "Password must be at least 6 characters long."}), 400
 
-    database = get_db()
-    existing = database.users.find_one({"email": email})
-    if existing:
-        return jsonify({"success": False, "error": "An account with this email already exists."}), 400
+        database = get_db()
+        existing = database.users.find_one({"email": email})
+        if existing:
+            return jsonify({"success": False, "error": "An account with this email already exists."}), 400
 
-    salt = bcrypt.gensalt(10)
-    password_hash = bcrypt.hashpw(password.encode("utf-8"), salt).decode("utf-8")
+        salt = bcrypt.gensalt(10)
+        password_hash = bcrypt.hashpw(password.encode("utf-8"), salt).decode("utf-8")
 
-    avatar_colors = ["#1a73e8", "#ea4335", "#fbbc04", "#34a853", "#9c27b0", "#0097a7", "#ff6d00"]
-    avatar_color = avatar_colors[hash(email) % len(avatar_colors)]
+        avatar_colors = ["#1a73e8", "#ea4335", "#fbbc04", "#34a853", "#9c27b0", "#0097a7", "#ff6d00"]
+        avatar_color = avatar_colors[abs(hash(email)) % len(avatar_colors)]
 
-    now = datetime.datetime.utcnow()
-    user_doc = {
-        "name": name,
-        "email": email,
-        "password_hash": password_hash,
-        "avatar_color": avatar_color,
-        "storage_used_bytes": 0,
-        "storage_limit_bytes": 15 * 1024 * 1024 * 1024,  # 15 GB
-        "created_at": now,
-        "updated_at": now
-    }
-    result = database.users.insert_one(user_doc)
-    user_id = result.inserted_id
-
-    token = create_token(user_id, email, name)
-    resp = make_response(jsonify({
-        "success": True,
-        "token": token,
-        "user": {
-            "id": str(user_id),
+        now = datetime.datetime.utcnow()
+        user_doc = {
             "name": name,
             "email": email,
+            "password_hash": password_hash,
             "avatar_color": avatar_color,
             "storage_used_bytes": 0,
-            "storage_limit_bytes": user_doc["storage_limit_bytes"]
+            "storage_limit_bytes": 15 * 1024 * 1024 * 1024,  # 15 GB
+            "created_at": now,
+            "updated_at": now
         }
-    }), 201)
-    resp.set_cookie("token", token, httponly=True, samesite="Lax", max_age=14*24*3600)
-    return resp
+        result = database.users.insert_one(user_doc)
+        user_id = result.inserted_id
+
+        token = create_token(user_id, email, name)
+        resp = make_response(jsonify({
+            "success": True,
+            "token": token,
+            "user": {
+                "id": str(user_id),
+                "name": name,
+                "email": email,
+                "avatar_color": avatar_color,
+                "storage_used_bytes": 0,
+                "storage_limit_bytes": user_doc["storage_limit_bytes"]
+            }
+        }), 201)
+        resp.set_cookie("token", token, httponly=True, samesite="Lax", max_age=14*24*3600)
+        return resp
+    except Exception as e:
+        print("Register error:", e)
+        return jsonify({"success": False, "error": f"Registration failed: {str(e)}"}), 500
 
 @app.route("/api/auth/login", methods=["POST"])
 def login():
-    data = request.get_json() or {}
-    email = (data.get("email") or "").strip().lower()
-    password = data.get("password") or ""
+    try:
+        data = request.get_json() or {}
+        email = (data.get("email") or "").strip().lower()
+        password = data.get("password") or ""
 
-    if not email or not password:
-        return jsonify({"success": False, "error": "Email and password are required."}), 400
+        if not email or not password:
+            return jsonify({"success": False, "error": "Email and password are required."}), 400
 
-    database = get_db()
-    user = database.users.find_one({"email": email})
-    if not user:
-        return jsonify({"success": False, "error": "Invalid email or password."}), 401
+        database = get_db()
+        user = database.users.find_one({"email": email})
+        if not user:
+            return jsonify({"success": False, "error": "Invalid email or password."}), 401
 
-    if not bcrypt.checkpw(password.encode("utf-8"), user["password_hash"].encode("utf-8")):
-        return jsonify({"success": False, "error": "Invalid email or password."}), 401
+        if not bcrypt.checkpw(password.encode("utf-8"), user["password_hash"].encode("utf-8")):
+            return jsonify({"success": False, "error": "Invalid email or password."}), 401
 
-    token = create_token(user["_id"], user["email"], user["name"])
-    resp = make_response(jsonify({
-        "success": True,
-        "token": token,
-        "user": {
-            "id": str(user["_id"]),
-            "name": user["name"],
-            "email": user["email"],
-            "avatar_color": user.get("avatar_color", "#1a73e8"),
-            "storage_used_bytes": user.get("storage_used_bytes", 0),
-            "storage_limit_bytes": user.get("storage_limit_bytes", 15 * 1024 * 1024 * 1024)
-        }
-    }))
-    resp.set_cookie("token", token, httponly=True, samesite="Lax", max_age=14*24*3600)
-    return resp
+        token = create_token(user["_id"], user["email"], user["name"])
+        resp = make_response(jsonify({
+            "success": True,
+            "token": token,
+            "user": {
+                "id": str(user["_id"]),
+                "name": user["name"],
+                "email": user["email"],
+                "avatar_color": user.get("avatar_color", "#1a73e8"),
+                "storage_used_bytes": user.get("storage_used_bytes", 0),
+                "storage_limit_bytes": user.get("storage_limit_bytes", 15 * 1024 * 1024 * 1024)
+            }
+        }))
+        resp.set_cookie("token", token, httponly=True, samesite="Lax", max_age=14*24*3600)
+        return resp
+    except Exception as e:
+        print("Login error:", e)
+        return jsonify({"success": False, "error": f"Login failed: {str(e)}"}), 500
 
 @app.route("/api/auth/logout", methods=["POST"])
 def logout():
