@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Haul Pro - Cloud Storage & Media Platform</title>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 87.3 78'><path d='m6.6 66.85 3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8h-27.5c0 1.55.4 3.1 1.2 4.5z' fill='%230066da'/><path d='m43.65 25-13.75-23.8c-1.35.8-2.5 1.9-3.3 3.3l-25.4 44c-.8 1.4-1.2 2.95-1.2 4.5h27.5z' fill='%2300ac47'/><path d='m73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75 7.65-13.25c.8-1.4 1.2-2.95 1.2-4.5h-27.502l5.852 11.5z' fill='%23ea4335'/><path d='m43.65 25 13.75-23.8c-1.35-.8-2.9-1.2-4.5-1.2h-18.5c-1.6 0-3.15.45-4.5 1.2z' fill='%2300832d'/><path d='m59.8 53h-32.3l-13.75 23.8c1.35.8 2.9 1.2 4.5 1.2h50.8c1.6 0 3.15-.45 4.5-1.2z' fill='%232684fc'/><path d='m73.4 26.5-12.7-22c-.8-1.4-1.95-2.5-3.3-3.3l-13.75 23.8 16.15 28h27.45c0-1.55-.4-3.1-1.2-4.5z' fill='%23ffba00'/></svg>">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'><defs><linearGradient id='g' x1='4' y1='4' x2='36' y2='36' gradientUnits='userSpaceOnUse'><stop offset='0%25' stop-color='%231a73e8'/><stop offset='100%25' stop-color='%230d47a1'/></linearGradient></defs><rect x='3' y='3' width='34' height='34' rx='10' fill='url(%23g)'/><path d='M12 11V29M28 11V29M12 20H28' stroke='white' stroke-width='3.5' stroke-linecap='round'/><circle cx='20' cy='13.5' r='2.2' fill='%2300e5ff'/></svg>">
   <link rel="stylesheet" href="/css/drive.css">
   <link rel="stylesheet" href="/css/viewer.css">
   <link rel="stylesheet" href="/css/auth.css">
@@ -29,7 +29,7 @@
     </div>
 
     <div class="topbar-right">
-      <button id="user-profile-btn" class="user-profile-btn" title="Google Account">U</button>
+      <button id="user-profile-btn" class="user-profile-btn" title="Haul Account">U</button>
       
       <!-- User Profile Dropdown -->
       <div id="profile-dropdown" class="profile-dropdown">
@@ -241,8 +241,8 @@
   <script>
     document.addEventListener('DOMContentLoaded', () => {
       // Inject SVGs into UI (Zero emojis)
-      document.getElementById('logo-icon-container').innerHTML = Icons.drive_logo;
-      document.getElementById('auth-logo-container').innerHTML = Icons.drive_logo;
+      document.getElementById('logo-icon-container').innerHTML = Icons.haul_logo;
+      document.getElementById('auth-logo-container').innerHTML = Icons.haul_logo;
       document.getElementById('search-icon-container').innerHTML = Icons.search;
       document.getElementById('filter-icon-container').innerHTML = Icons.filter;
       document.getElementById('new-icon-container').innerHTML = Icons.plus;
