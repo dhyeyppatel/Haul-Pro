@@ -35,11 +35,21 @@ const Drive = {
   // Drag & Drop State
   draggedFileId: null,
 
+  getShareTokenFromUrl() {
+    const rawPath = window.location.pathname.replace(/^\/+|\/+$/g, '');
+    if (!rawPath) return null;
+    const parts = rawPath.split('/');
+    if (parts.length >= 2 && (parts[0].toLowerCase() === 's' || parts[0].toLowerCase() === 'share')) {
+      return parts[1];
+    }
+    return null;
+  },
+
   getProfileUsernameFromUrl() {
     const rawPath = window.location.pathname.replace(/^\/+|\/+$/g, '');
     if (!rawPath) return null;
     const firstSegment = rawPath.split('/')[0].toLowerCase();
-    const systemRoutes = ['api', 'css', 'js', 'public', 'index.html', 'favicon.ico'];
+    const systemRoutes = ['api', 'css', 'js', 'public', 'index.html', 'favicon.ico', 's', 'share'];
     if (systemRoutes.includes(firstSegment)) return null;
     return firstSegment;
   },
@@ -638,21 +648,23 @@ const Drive = {
         throw new Error(res.error || 'Failed to create secure share link');
       }
 
-      const shareUrl = res.share_url || `${window.location.origin}/share/${res.token}`;
+      const shareUrl = (res.share_url && res.share_url.startsWith('http'))
+        ? res.share_url
+        : `${window.location.origin}/s/${res.token}`;
       if (urlInput) urlInput.value = shareUrl;
 
       if (badgesBox) {
         let badgesHtml = '';
         if (burnAfterReading) {
-          badgesHtml += `<span class="share-badge-pill burn">${Icons.flame || ''} 1-Time Burn</span>`;
+          badgesHtml += `<span class="share-pill-badge burn">${Icons.flame || ''} 1-Time Burn</span>`;
         }
         if (password) {
-          badgesHtml += `<span class="share-badge-pill pin">${Icons.lock || ''} Password Protected</span>`;
+          badgesHtml += `<span class="share-pill-badge pin">${Icons.lock || ''} Password Protected</span>`;
         }
         if (expiresHours > 0) {
-          badgesHtml += `<span class="share-badge-pill expiry">${Icons.lock_clock || ''} Expires in ${expiresHours}h</span>`;
+          badgesHtml += `<span class="share-pill-badge expiry">${Icons.lock_clock || ''} Expires in ${expiresHours}h</span>`;
         } else {
-          badgesHtml += `<span class="share-badge-pill">Never expires</span>`;
+          badgesHtml += `<span class="share-pill-badge">Never expires</span>`;
         }
         badgesBox.innerHTML = badgesHtml;
       }
@@ -679,6 +691,118 @@ const Drive = {
       document.execCommand('copy');
       this.showToast('Secure link copied!');
     });
+  },
+
+  // ==========================================
+  // RECIPIENT SECURE SHARE ACCESS HANDLER
+  // ==========================================
+  async handleShareRoute(token) {
+    this.activeShareToken = token;
+    const modal = document.getElementById('secure-access-modal');
+    const nameEl = document.getElementById('secure-access-file-name');
+    const metaEl = document.getElementById('secure-access-file-meta');
+    const iconEl = document.getElementById('secure-access-file-icon');
+    const badgesBox = document.getElementById('secure-access-badges');
+    const burnWarn = document.getElementById('secure-access-burn-warning');
+    const pwdGroup = document.getElementById('secure-access-pwd-group');
+    const errBox = document.getElementById('secure-access-error');
+    const submitBtn = document.getElementById('secure-access-submit-btn');
+
+    if (modal) modal.style.display = 'flex';
+    this.hideLoadingScreen();
+
+    try {
+      const meta = await API.getShareMeta(token);
+      if (!meta.success) {
+        throw new Error(meta.error || 'Failed to load secure link metadata.');
+      }
+
+      this.shareMeta = meta;
+
+      if (nameEl) nameEl.textContent = meta.file_name;
+      if (metaEl) metaEl.textContent = `${(meta.category || 'file').toUpperCase()} • ${Auth.formatBytes(meta.file_size || 0)}`;
+      if (iconEl && typeof getFileIcon === 'function') {
+        iconEl.innerHTML = getFileIcon(meta.category, meta.extension);
+      }
+
+      let badgesHtml = '';
+      if (meta.burn_after_reading) {
+        badgesHtml += `<span class="share-pill-badge burn">${Icons.flame || ''} 1-Time Burn</span>`;
+        if (burnWarn) burnWarn.style.display = 'block';
+      } else {
+        if (burnWarn) burnWarn.style.display = 'none';
+      }
+
+      if (meta.requires_password) {
+        badgesHtml += `<span class="share-pill-badge pin">${Icons.lock || ''} Password Protected</span>`;
+        if (pwdGroup) pwdGroup.style.display = 'block';
+      } else {
+        if (pwdGroup) pwdGroup.style.display = 'none';
+      }
+
+      if (meta.expires_at) {
+        const expDate = new Date(meta.expires_at);
+        badgesHtml += `<span class="share-pill-badge expiry">${Icons.lock_clock || ''} Expires ${expDate.toLocaleDateString()}</span>`;
+      }
+      if (badgesBox) badgesBox.innerHTML = badgesHtml;
+
+      if (submitBtn) {
+        submitBtn.textContent = meta.burn_after_reading ? 'Unlock & Self-Destruct File' : 'Unlock & View File';
+      }
+
+      // If no password and not burn-after-reading, auto-access file
+      if (!meta.requires_password && !meta.burn_after_reading) {
+        await this.submitSecureAccess();
+      }
+
+    } catch (err) {
+      if (nameEl) nameEl.textContent = 'Link Unavailable';
+      if (metaEl) metaEl.textContent = err.message || 'This secure link is invalid, expired, or has self-destructed.';
+      if (iconEl) iconEl.innerHTML = Icons.lock_clock || Icons.lock;
+      if (burnWarn) burnWarn.style.display = 'none';
+      if (pwdGroup) pwdGroup.style.display = 'none';
+      if (submitBtn) {
+        submitBtn.textContent = 'Return to Shelfie';
+        submitBtn.onclick = () => window.location.href = '/';
+      }
+    }
+  },
+
+  async submitSecureAccess() {
+    if (!this.activeShareToken) return;
+    const pwdInput = document.getElementById('secure-access-pwd-input');
+    const errBox = document.getElementById('secure-access-error');
+    const submitBtn = document.getElementById('secure-access-submit-btn');
+
+    const password = pwdInput ? pwdInput.value.trim() : '';
+
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Unlocking...';
+    }
+    if (errBox) errBox.style.display = 'none';
+
+    try {
+      const res = await API.accessShare(this.activeShareToken, password);
+      if (!res.success || !res.file) {
+        throw new Error(res.error || 'Failed to unlock file.');
+      }
+
+      const modal = document.getElementById('secure-access-modal');
+      if (modal) modal.style.display = 'none';
+
+      // Open file in Viewer
+      Viewer.open(res.file);
+    } catch (err) {
+      if (errBox) {
+        errBox.textContent = err.message || 'Incorrect password or link expired.';
+        errBox.style.display = 'block';
+      }
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Try Again';
+      }
+    }
   },
 
   // ==========================================

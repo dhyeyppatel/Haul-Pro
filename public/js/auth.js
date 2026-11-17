@@ -266,15 +266,24 @@ const Auth = {
   },
 
   async checkSession() {
+    const shareToken = Drive.getShareTokenFromUrl();
     const isProfilePath = Drive.getProfileUsernameFromUrl();
+
     try {
       const data = await API.getMe();
       if (data.success && data.user) {
         this.setCurrentUser(data.user);
         this.hideModal();
-        Drive.init();
+        if (shareToken) {
+          Drive.handleShareRoute(shareToken);
+        } else {
+          Drive.init();
+        }
       } else {
-        if (isProfilePath) {
+        if (shareToken) {
+          this.setGuestMode();
+          Drive.handleShareRoute(shareToken);
+        } else if (isProfilePath) {
           this.setGuestMode();
           Drive.init();
         } else {
@@ -283,7 +292,10 @@ const Auth = {
         }
       }
     } catch (e) {
-      if (isProfilePath) {
+      if (shareToken) {
+        this.setGuestMode();
+        Drive.handleShareRoute(shareToken);
+      } else if (isProfilePath) {
         this.setGuestMode();
         Drive.init();
       } else {

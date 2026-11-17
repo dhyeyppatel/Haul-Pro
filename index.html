@@ -560,6 +560,43 @@
     </div>
   </div>
 
+  <!-- SECURE SHARE ACCESS MODAL (Recipient View for /s/<token>) -->
+  <div id="secure-access-modal" class="modal-backdrop" style="display: none;">
+    <div class="modal-card apple-modal" style="max-width: 440px;">
+      <div class="modal-header apple-modal-header">
+        <div class="settings-header-left">
+          <span id="secure-access-header-icon"></span>
+          <h3 class="modal-title">Secure Shared File</h3>
+        </div>
+      </div>
+      <div class="modal-body apple-modal-body" id="secure-access-body">
+        <div class="share-file-preview" style="margin-bottom: 16px;">
+          <span id="secure-access-file-icon"></span>
+          <div class="share-file-info">
+            <div id="secure-access-file-name" class="share-file-name">Loading file...</div>
+            <div id="secure-access-file-meta" class="share-file-meta">Please wait</div>
+          </div>
+        </div>
+
+        <div id="secure-access-badges" class="share-result-badges" style="margin-bottom: 14px;"></div>
+
+        <div id="secure-access-burn-warning" class="auth-error" style="display: none; background: rgba(234,67,53,0.08); border-color: rgba(234,67,53,0.25); color: #ea4335; margin-bottom: 14px;">
+          Warning: This link is set to Burn After Reading. The file will permanently self-destruct once accessed.
+        </div>
+
+        <div id="secure-access-pwd-group" class="form-row" style="display: none; margin-bottom: 14px;">
+          <label class="form-label" style="font-size: 12px; font-weight: 600; margin-bottom: 6px; color: var(--text-secondary); display: block;">Enter Password / PIN</label>
+          <input type="password" id="secure-access-pwd-input" class="form-input" placeholder="Password required to unlock" autocomplete="current-password" style="width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-secondary); color: var(--text-primary); font-size: 13px;">
+        </div>
+
+        <div id="secure-access-error" class="auth-error" style="display: none; margin-bottom: 12px;"></div>
+      </div>
+      <div class="modal-actions apple-modal-actions" id="secure-access-actions">
+        <button type="button" class="btn-filled" id="secure-access-submit-btn" onclick="Drive.submitSecureAccess()" style="width: 100%; justify-content: center; padding: 10px 20px;">Access File</button>
+      </div>
+    </div>
+  </div>
+
   <!-- MULTI-USER AUTH MODAL -->
   <div id="auth-backdrop" class="auth-backdrop">
     <div class="auth-card">
@@ -1330,6 +1367,10 @@
       if (e2eeModalIcon) e2eeModalIcon.innerHTML = Icons.shield;
       const e2eeCloseIcon = document.getElementById('e2ee-close-icon');
       if (e2eeCloseIcon) e2eeCloseIcon.innerHTML = Icons.close;
+      const secAccHdrIcon = document.getElementById('secure-access-header-icon');
+      if (secAccHdrIcon) secAccHdrIcon.innerHTML = Icons.lock_clock || Icons.lock;
+      const secAccFileIcon = document.getElementById('secure-access-file-icon');
+      if (secAccFileIcon) secAccFileIcon.innerHTML = Icons.file_generic;
 
       // Multi-select ZIP download icon
       const multiDownload = document.getElementById('multi-download-icon');

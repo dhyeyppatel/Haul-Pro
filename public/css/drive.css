@@ -4119,9 +4119,34 @@ tr.selected .row-select-checkbox {
   font-weight: 600;
 }
 
+.share-pill-badge svg {
+  width: 13px;
+  height: 13px;
+}
+
+.share-pill-badge.burn {
+  background: rgba(234, 67, 53, 0.12);
+  color: #ea4335;
+}
+
+.share-pill-badge.pin {
+  background: rgba(249, 171, 0, 0.15);
+  color: #e37400;
+}
+
 [data-theme="dark"] .share-pill-badge {
   background: #1e2c45;
   color: #60a5fa;
+}
+
+[data-theme="dark"] .share-pill-badge.burn {
+  background: rgba(234, 67, 53, 0.22);
+  color: #f28b82;
+}
+
+[data-theme="dark"] .share-pill-badge.pin {
+  background: rgba(249, 171, 0, 0.22);
+  color: #fdd663;
 }
 
 /* ==========================================

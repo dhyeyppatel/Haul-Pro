@@ -1500,10 +1500,14 @@ def create_share():
     record_activity(user_id, "share", file_doc["name"], f"Created secure link for '{file_doc['name']}'", "file", {"burn": burn_after_reading, "has_password": bool(password)})
     trigger_webhooks(user_id, "file.shared", {"file_name": file_doc["name"], "token": token, "burn": burn_after_reading})
 
+    forwarded_proto = request.headers.get("X-Forwarded-Proto", "https")
+    forwarded_host = request.headers.get("X-Forwarded-Host") or request.host
+    origin = f"{forwarded_proto}://{forwarded_host}" if forwarded_host else request.host_url.rstrip("/")
+
     return jsonify({
         "success": True,
         "token": token,
-        "share_url": f"/s/{token}",
+        "share_url": f"{origin}/s/{token}",
         "expires_at": expires_at.isoformat() if expires_at else None,
         "burn_after_reading": burn_after_reading,
         "has_password": bool(password)
