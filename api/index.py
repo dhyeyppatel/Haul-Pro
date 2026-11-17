@@ -373,15 +373,16 @@ def get_me():
     # Recalculate true active storage consumption
     storage_used = int(user.get("storage_used_bytes", 0) or 0)
     try:
-        pipeline = [
-            {"$match": {"user_id": user_id_match(user["_id"]), "is_trashed": False}},
-            {"$group": {"_id": None, "total": {"$sum": "$size"}}}
-        ]
-        agg = list(database.files.aggregate(pipeline))
-        if agg and "total" in agg[0]:
-            storage_used = int(agg[0]["total"])
-            if storage_used != user.get("storage_used_bytes"):
-                database.users.update_one({"_id": user["_id"]}, {"$set": {"storage_used_bytes": storage_used}})
+        active_files = list(database.files.find({"user_id": user_id_match(user["_id"]), "is_trashed": {"$ne": True}}))
+        calculated = 0
+        for f in active_files:
+            try:
+                calculated += int(float(f.get("size", 0) or 0))
+            except Exception:
+                pass
+        storage_used = calculated
+        if storage_used != user.get("storage_used_bytes"):
+            database.users.update_one({"_id": user["_id"]}, {"$set": {"storage_used_bytes": storage_used}})
     except Exception:
         pass
 
@@ -608,7 +609,10 @@ def get_storage_stats():
     total_active_bytes = 0
 
     for f in files:
-        sz = int(f.get("size", 0) or 0)
+        try:
+            sz = int(float(f.get("size", 0) or 0))
+        except Exception:
+            sz = 0
         if f.get("is_trashed"):
             trashed_bytes += sz
             trashed_count += 1
@@ -728,7 +732,7 @@ def list_folders():
         except Exception:
             parent_id = None
 
-    query = {"user_id": user_id, "is_trashed": is_trashed}
+    query = {"user_id": user_id_match(user_id), "is_trashed": {"$eq": True} if is_trashed else {"$ne": True}}
     if is_starred:
         query["is_starred"] = True
     elif not is_trashed:
@@ -1100,7 +1104,7 @@ def list_files():
     is_trashed = request.args.get("trashed") == "true"
     search = (request.args.get("search") or "").strip()
 
-    query = {"user_id": user_id, "is_trashed": is_trashed}
+    query = {"user_id": user_id_match(user_id), "is_trashed": {"$eq": True} if is_trashed else {"$ne": True}}
 
     if search:
         query["$or"] = [

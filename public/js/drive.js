@@ -584,10 +584,9 @@ const Drive = {
   // SECURE SHARES (EXPIRING & PIN PROTECTED)
   // ==========================================
   openShareFileModal(fileId) {
-    const file = this.files.find(f => f.id === fileId) || this.selectedFile;
-    if (!file) return;
-
+    const file = (this.files && this.files.find(f => f.id === fileId)) || (this.selectedFile && this.selectedFile.id === fileId ? this.selectedFile : null) || { id: fileId };
     this.sharingFile = file;
+
     const modal = document.getElementById('share-modal');
     const nameEl = document.getElementById('share-file-name');
     const metaEl = document.getElementById('share-file-meta');
@@ -598,10 +597,32 @@ const Drive = {
     const expirySelect = document.getElementById('share-expiry-select');
     const genBtn = document.getElementById('share-generate-btn');
 
-    if (nameEl) nameEl.textContent = file.name;
-    if (metaEl) metaEl.textContent = `${(file.category || 'file').toUpperCase()} • ${Auth.formatBytes(file.size || 0)}`;
+    // Direct link & visibility elements
+    const directInput = document.getElementById('share-direct-url-input');
+    const directBadge = document.getElementById('share-direct-vis-badge');
+    const directDesc = document.getElementById('share-direct-vis-desc');
+    const directToggleBtn = document.getElementById('share-direct-toggle-vis-btn');
+
+    if (nameEl) nameEl.textContent = file.name || 'File';
+    if (metaEl) metaEl.textContent = `${(file.category || 'file').toUpperCase()} • ${typeof Auth !== 'undefined' && Auth.formatBytes ? Auth.formatBytes(file.size || 0) : ''}`;
     if (iconEl && typeof getFileIcon === 'function') {
       iconEl.innerHTML = getFileIcon(file.category, file.extension);
+    }
+
+    // Populate Direct Link
+    if (directInput) directInput.value = file.hosted_url || '';
+    const isPublic = Boolean(file.is_public);
+    if (directBadge) {
+      directBadge.className = `vis-badge ${isPublic ? 'public' : 'private'}`;
+      directBadge.textContent = isPublic ? 'Public' : 'Private';
+    }
+    if (directDesc) {
+      directDesc.textContent = isPublic 
+        ? 'Publicly accessible to anyone with this direct link' 
+        : 'Private — only you can view this file until made public';
+    }
+    if (directToggleBtn) {
+      directToggleBtn.textContent = isPublic ? 'Make Private' : 'Make Public';
     }
 
     if (pwdInput) pwdInput.value = '';
@@ -609,13 +630,67 @@ const Drive = {
     if (expirySelect) expirySelect.value = '24';
     if (resBox) resBox.style.display = 'none';
     if (genBtn) {
-      genBtn.disabled = false;
-      genBtn.textContent = 'Generate Link';
+      genBtn.disabled = false
+      genBtn.textContent = 'Generate Secure Link';
     }
 
     if (modal) modal.style.display = 'flex';
   },
 
+  copyDirectLinkFromShareModal() {
+    const input = document.getElementById('share-direct-url-input');
+    if (!input || !input.value) return;
+    navigator.clipboard.writeText(input.value).then(() => {
+      this.showToast('Direct file link copied to clipboard!');
+      if (this.sharingFile && API.logActivity) {
+        API.logActivity('share', `Shared direct link for '${this.sharingFile.name}'`, this.sharingFile.name, 'file');
+      }
+    }).catch(() => {
+      input.select();
+      document.execCommand('copy');
+      this.showToast('Direct link copied!');
+    });
+  },
+
+  async toggleShareModalVisibility() {
+    if (!this.sharingFile) return;
+    const currentIsPublic = Boolean(this.sharingFile.is_public);
+    const newIsPublic = !currentIsPublic;
+    const toggleBtn = document.getElementById('share-direct-toggle-vis-btn');
+    if (toggleBtn) toggleBtn.disabled = true;
+
+    try {
+      const res = await API.toggleFileVisibility(this.sharingFile.id, newIsPublic);
+      if (res && res.success !== false) {
+        this.sharingFile.is_public = newIsPublic;
+        const fileInList = this.files.find(f => f.id === this.sharingFile.id);
+        if (fileInList) fileInList.is_public = newIsPublic;
+
+        const directBadge = document.getElementById('share-direct-vis-badge');
+        const directDesc = document.getElementById('share-direct-vis-desc');
+        if (directBadge) {
+          directBadge.className = `vis-badge ${newIsPublic ? 'public' : 'private'}`;
+          directBadge.textContent = newIsPublic ? 'Public' : 'Private';
+        }
+        if (directDesc) {
+          directDesc.textContent = newIsPublic 
+            ? 'Publicly accessible to anyone with this direct link' 
+            : 'Private — only you can view this file until made public';
+        }
+        if (toggleBtn) {
+          toggleBtn.textContent = newIsPublic ? 'Make Private' : 'Make Public';
+        }
+        this.showToast(newIsPublic ? 'File is now public' : 'File is now private');
+        this.renderDriveView();
+      } else {
+        this.showToast((res && res.error) || 'Failed to update visibility', 'error');
+      }
+    } catch (e) {
+      this.showToast(e.message || 'Error updating file visibility', 'error');
+    } finally {
+      if (toggleBtn) toggleBtn.disabled = false;
+    }
+  },
   closeShareModal() {
     const modal = document.getElementById('share-modal');
     if (modal) modal.style.display = 'none';
@@ -2083,14 +2158,8 @@ const Drive = {
           ${Icons.lock} <span>Decrypt & View</span>
         </div>
       ` : ''}
-      <div class="context-menu-item" onclick="Drive.shareFile('${file.id}')">
-        ${Icons.share} <span>Share</span>
-      </div>
       <div class="context-menu-item" onclick="Drive.openShareFileModal('${file.id}')">
-        ${Icons.lock_clock || Icons.lock} <span>Secure Share (Expiring/PIN)</span>
-      </div>
-      <div class="context-menu-item" onclick="Drive.copyDirectLink('${file.hosted_url}', '${file.name.replace(/'/g, "\\'")}')">
-        ${Icons.link} <span>Copy direct link</span>
+        ${Icons.share} <span>Share</span>
       </div>
       <div class="context-menu-item" onclick="Viewer.download()">
         ${Icons.download} <span>Download</span>
@@ -2273,18 +2342,7 @@ const Drive = {
   },
 
   shareFile(fileId) {
-    const file = this.files.find(f => f.id === fileId);
-    if (!file) return;
-    const url = file.hosted_url || '';
-    if (!url) return;
-    navigator.clipboard.writeText(url).then(() => {
-      this.showToast('Shareable file link copied to clipboard!');
-      if (API.logActivity) {
-        API.logActivity('share', `Shared link for '${file.name}'`, file.name, 'file');
-      }
-    }).catch(() => {
-      this.showToast('Failed to copy link', 'error');
-    });
+    this.openShareFileModal(fileId);
   },
 
   copyDirectLink(url, name) {

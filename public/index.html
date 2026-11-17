@@ -468,13 +468,13 @@
     </div>
   </div>
 
-  <!-- SECURE SHARE MODAL (Expiring Links & Password Protection) -->
+  <!-- SECURE & DIRECT UNIFIED SHARE MODAL -->
   <div id="share-modal" class="modal-backdrop" style="display: none;">
     <div class="modal-card apple-modal share-modal-card">
       <div class="modal-header apple-modal-header">
         <div class="settings-header-left">
           <span id="share-modal-title-icon"></span>
-          <h3 class="modal-title" id="share-modal-title">Share Securely</h3>
+          <h3 class="modal-title" id="share-modal-title">Share File</h3>
         </div>
         <button type="button" class="icon-btn apple-close-btn" onclick="Drive.closeShareModal()" title="Close">
           <span id="share-close-icon"></span>
@@ -485,12 +485,33 @@
           <span id="share-file-icon"></span>
           <div class="share-file-info">
             <div id="share-file-name" class="share-file-name">filename.ext</div>
-            <div id="share-file-meta" class="share-file-meta">Document • 12 KB</div>
+            <div id="share-file-meta" class="share-file-meta">Document &bull; 12 KB</div>
+          </div>
+        </div>
+
+        <!-- DIRECT FILE LINK & VISIBILITY -->
+        <div class="apple-group" style="margin-bottom: 14px;">
+          <div class="apple-group-header">DIRECT FILE LINK</div>
+          <div class="apple-cell" style="flex-direction: column; align-items: stretch; gap: 10px; padding: 12px 16px;">
+            <div style="display: flex; align-items: center; justify-content: space-between;">
+              <div class="apple-cell-info">
+                <div class="apple-cell-title" style="display: flex; align-items: center; gap: 8px;">
+                  <span>Direct URL</span>
+                  <span id="share-direct-vis-badge" class="vis-badge private">Private</span>
+                </div>
+                <div class="apple-cell-sub" id="share-direct-vis-desc">Direct CDN link to this file</div>
+              </div>
+              <button type="button" class="btn-text" id="share-direct-toggle-vis-btn" onclick="Drive.toggleShareModalVisibility()" style="font-size: 12px; padding: 4px 10px;">Make Public</button>
+            </div>
+            <div class="share-url-row">
+              <input type="text" id="share-direct-url-input" class="share-url-input" readonly>
+              <button type="button" class="btn-filled" id="share-copy-direct-btn" onclick="Drive.copyDirectLinkFromShareModal()">Copy Link</button>
+            </div>
           </div>
         </div>
 
         <div class="apple-group">
-          <div class="apple-group-header">LINK SECURITY & EXPIRATION</div>
+          <div class="apple-group-header">TEMPORARY & SECURE SHARE LINK</div>
           
           <div class="apple-cell">
             <div class="apple-cell-info">
@@ -537,7 +558,7 @@
       </div>
       <div class="modal-actions apple-modal-actions" id="share-modal-actions">
         <button type="button" class="btn-text" onclick="Drive.closeShareModal()">Cancel</button>
-        <button type="button" class="btn-filled" id="share-generate-btn" onclick="Drive.generateSecureShareLink()">Generate Link</button>
+        <button type="button" class="btn-filled" id="share-generate-btn" onclick="Drive.generateSecureShareLink()">Generate Secure Link</button>
       </div>
     </div>
   </div>

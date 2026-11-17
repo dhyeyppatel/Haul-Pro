@@ -841,10 +841,17 @@ const Viewer = {
   },
 
   copyLink() {
-    if (!this.activeFile || !this.activeFile.hosted_url) return;
+    if (!this.activeFile) return;
+    if (typeof Drive !== 'undefined' && Drive.openShareFileModal && this.activeFile.id) {
+      Drive.openShareFileModal(this.activeFile.id);
+      return;
+    }
+    if (!this.activeFile.hosted_url) return;
     navigator.clipboard.writeText(this.activeFile.hosted_url).then(() => {
-      alert('Direct link copied to clipboard: ' + this.activeFile.hosted_url);
-    });
+      if (typeof Drive !== 'undefined' && Drive.showToast) {
+        Drive.showToast('Direct link copied to clipboard!');
+      }
+    }).catch(() => {});
   },
 
   // ==========================================
