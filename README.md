@@ -180,7 +180,200 @@ Shelfie recognizes Slack webhook URLs (`hooks.slack.com/services/...`) and trans
 
 ---
 
-#### Example 3: Custom Node.js / Express Server (with HMAC Verification)
+#### Example 3: Telegram Bot Integration
+
+You can integrate Shelfie with Telegram in two ways: **Direct Delivery** (no middleware server required) or via a **Custom Webhook Bot Receiver** with HMAC verification.
+
+---
+
+##### Option A: Direct Telegram Delivery (Zero Code Required)
+
+Shelfie natively detects Telegram Bot API endpoints and automatically formats events into clean HTML messages for your Telegram chat, group, or channel.
+
+1. **Create a Bot**: Message `@BotFather` on Telegram, send `/newbot`, and copy your bot HTTP API token (e.g., `123456789:ABCdefGhIJKlmNoPQRsTUVwxyZ`).
+2. **Find Your Chat ID**: Start a chat with your bot, then open:
+   `https://api.telegram.org/bot<YOUR_BOT_TOKEN>/getUpdates`
+   Look for `"chat":{"id": 123456789}`. (For public channels or supergroups, use `@channel_username` or `-100xxxxxxxxx`).
+3. **Register in Shelfie**:
+   - Go to **Settings > Webhooks** in Shelfie.
+   - Set **Payload URL** to:
+     ```text
+     https://api.telegram.org/bot<YOUR_BOT_TOKEN>/sendMessage?chat_id=<YOUR_CHAT_ID>
+     ```
+   - Select your desired events (e.g., `file.uploaded`, `file.deleted`, `file.shared`).
+   - Click **Save Webhook**.
+
+**Sample Telegram Message Delivered by Shelfie:**
+```text
+[Shelfie Cloud Drive] Event: file.uploaded
+- File: design-specs.pdf
+- Category: Document
+- Direct URL: https://media.dhyey.cc/1794888054.pdf
+```
+
+---
+
+##### Option B: Custom Python Telegram Bot Listener (with HMAC Verification)
+
+If you prefer custom logic, routing, or message formatting, run a lightweight webhook receiver that verifies the HMAC-SHA256 signature and forwards alerts via the Telegram Bot API.
+
+**Prerequisites:**
+```bash
+pip install flask requests
+```
+
+**Python Webhook Receiver (`telegram_webhook.py`):**
+```python
+from flask import Flask, request, jsonify
+import hmac
+import hashlib
+import requests
+
+app = Flask(__name__)
+
+# Configuration
+WEBHOOK_SECRET = "your-shelfie-webhook-secret"
+TELEGRAM_BOT_TOKEN = "123456789:ABCdefGhIJKlmNoPQRsTUVwxyZ"
+TELEGRAM_CHAT_ID = "123456789"
+
+def send_telegram_message(text):
+    url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
+    payload = {
+        "chat_id": TELEGRAM_CHAT_ID,
+        "text": text,
+        "parse_mode": "HTML",
+        "disable_web_page_preview": False
+    }
+    try:
+        requests.post(url, json=payload, timeout=5)
+    except Exception as e:
+        print(f"Failed to forward message to Telegram: {e}")
+
+@app.route("/webhook/shelfie", methods=["POST"])
+def handle_shelfie_webhook():
+    # 1. Verify HMAC-SHA256 Signature
+    signature = request.headers.get("X-Shelfie-Signature", "")
+    if WEBHOOK_SECRET and signature:
+        expected = "sha256=" + hmac.new(
+            WEBHOOK_SECRET.encode("utf-8"),
+            request.get_data(),
+            hashlib.sha256
+        ).hexdigest()
+
+        if not hmac.compare_digest(signature, expected):
+            return jsonify({"error": "Signature mismatch"}), 401
+
+    event = request.headers.get("X-Shelfie-Event", "")
+    payload = request.get_json() or {}
+    data = payload.get("data", {})
+
+    # 2. Format Telegram Notification
+    if event == "file.uploaded":
+        msg = (
+            f"<b>New Upload to Shelfie</b>\n"
+            f"<b>File:</b> {data.get('name')}\n"
+            f"<b>Size:</b> {data.get('size', 0):,} bytes\n"
+            f"<b>Category:</b> {data.get('category', 'file').capitalize()}\n"
+            f"<b>Link:</b> {data.get('hosted_url')}"
+        )
+    elif event == "file.deleted":
+        msg = (
+            f"<b>File Removed from Shelfie</b>\n"
+            f"<b>Items:</b> {data.get('count', 1)} item(s) permanently deleted"
+        )
+    elif event == "file.shared":
+        msg = (
+            f"<b>Secure Share Created</b>\n"
+            f"<b>File:</b> {data.get('file_name')}\n"
+            f"<b>Burn After Reading:</b> {'Yes' if data.get('burn') else 'No'}"
+        )
+    else:
+        msg = f"<b>Shelfie Alert:</b> Event <code>{event}</code> triggered."
+
+    # 3. Dispatch to Telegram
+    send_telegram_message(msg)
+    return jsonify({"status": "delivered_to_telegram"}), 200
+
+if __name__ == "__main__":
+    app.run(port=5000)
+```
+
+---
+
+##### Option C: Node.js Telegram Bot Listener (with Express)
+
+```javascript
+const express = require('express');
+const crypto = require('crypto');
+const https = require('https');
+
+const app = express();
+const WEBHOOK_SECRET = 'your-shelfie-webhook-secret';
+const TELEGRAM_BOT_TOKEN = '123456789:ABCdefGhIJKlmNoPQRsTUVwxyZ';
+const TELEGRAM_CHAT_ID = '123456789';
+
+app.use(express.json({
+  verify: (req, res, buf) => { req.rawBody = buf; }
+}));
+
+function sendTelegram(text) {
+  const data = JSON.stringify({
+    chat_id: TELEGRAM_CHAT_ID,
+    text: text,
+    parse_mode: 'HTML'
+  });
+
+  const req = https.request({
+    hostname: 'api.telegram.org',
+    path: `/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Content-Length': Buffer.byteLength(data)
+    }
+  });
+
+  req.on('error', (err) => console.error('Telegram delivery error:', err));
+  req.write(data);
+  req.end();
+}
+
+app.post('/webhook/shelfie', (req, res) => {
+  const signature = req.headers['x-shelfie-signature'];
+  const event = req.headers['x-shelfie-event'];
+
+  if (WEBHOOK_SECRET && signature) {
+    const expected = 'sha256=' + crypto
+      .createHmac('sha256', WEBHOOK_SECRET)
+      .update(req.rawBody)
+      .digest('hex');
+
+    if (signature !== expected) {
+      return res.status(401).json({ error: 'Signature mismatch' });
+    }
+  }
+
+  const data = (req.body && req.body.data) || {};
+  let msg = `<b>[Shelfie]</b> Event: <code>${event}</code>\n`;
+
+  if (event === 'file.uploaded') {
+    msg += `<b>File:</b> ${data.name}\n<b>URL:</b> ${data.hosted_url}`;
+  } else if (event === 'file.deleted') {
+    msg += `<b>Deleted:</b> ${data.count || 1} file(s)`;
+  } else if (event === 'file.shared') {
+    msg += `<b>Share Created:</b> ${data.file_name}`;
+  }
+
+  sendTelegram(msg);
+  res.status(200).json({ ok: true });
+});
+
+app.listen(4000, () => console.log('Telegram webhook listener running on port 4000'));
+```
+
+---
+
+#### Example 4: Custom Node.js / Express Server (with HMAC Verification)
 
 When sending to custom servers, Shelfie delivers standard JSON accompanied by an HMAC-SHA256 signature header:
 * `X-Shelfie-Signature`: `sha256=<hex_digest>`
@@ -239,7 +432,7 @@ app.listen(4000, () => console.log('Webhook listener running on port 4000'));
 
 ---
 
-#### Example 4: Custom Python (Flask / FastAPI) Server (with HMAC Verification)
+#### Example 5: Custom Python (Flask / FastAPI) Server (with HMAC Verification)
 
 **Server Implementation in Python (Flask):**
 ```python

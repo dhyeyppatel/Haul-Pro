@@ -190,6 +190,29 @@ def dispatch_single_webhook(wh_url, wh_secret, event_name, payload_data):
             requests.post(wh_url, json={"content": f"[Shelfie Cloud Drive] {desc}"}, timeout=6)
         elif "hooks.slack.com" in wh_url:
             requests.post(wh_url, json={"text": f"[Shelfie Cloud Drive] Event: {event_name} - {json_str}"}, timeout=6)
+        elif "api.telegram.org/bot" in wh_url:
+            from urllib.parse import urlparse, parse_qs
+            parsed = urlparse(wh_url)
+            params = parse_qs(parsed.query)
+            chat_id = params.get("chat_id", [None])[0]
+
+            tg_text = f"<b>[Shelfie Cloud Drive]</b> Event: <code>{event_name}</code>\n"
+            if event_name == "file.uploaded":
+                tg_text += f"- <b>File:</b> {payload_data.get('name', 'file')}\n"
+                tg_text += f"- <b>Category:</b> {payload_data.get('category', 'file').capitalize()}\n"
+                tg_text += f"- <b>Direct URL:</b> {payload_data.get('hosted_url', '')}"
+            elif event_name == "file.deleted":
+                tg_text += f"- <b>Items Deleted:</b> {payload_data.get('count', 1)}"
+            elif event_name == "file.shared":
+                tg_text += f"- <b>File:</b> {payload_data.get('file_name', 'file')}\n"
+                tg_text += f"- <b>Token:</b> {payload_data.get('token', '')}"
+            else:
+                tg_text += f"<pre>{json_str}</pre>"
+
+            tg_payload = {"text": tg_text, "parse_mode": "HTML"}
+            if chat_id:
+                tg_payload["chat_id"] = chat_id
+            requests.post(wh_url, json=tg_payload, timeout=6)
         else:
             requests.post(wh_url, data=json_str, headers=headers, timeout=6)
     except Exception as err:
