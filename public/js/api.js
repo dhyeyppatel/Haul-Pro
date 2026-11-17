@@ -9,7 +9,7 @@ const API = {
 
   getUploadUrl() {
     const host = (this.uploadHostUrl || 'https://media-hosting.dhyeyp254.workers.dev').replace(/\/+$/, '');
-    return `${host}/upload`;
+    return `${host}/api/upload`;
   },
 
   getHostUrlEndpoint() {
@@ -177,9 +177,7 @@ const API = {
       xhr.open('POST', uploadUrl);
       if (this.uploadApiKey) {
         xhr.setRequestHeader('X-API-Key', this.uploadApiKey);
-        xhr.setRequestHeader('X-Shelfie-Token', this.uploadApiKey);
       }
-      xhr.setRequestHeader('X-Shelfie-Origin', 'shelfie-platform');
 
       if (onProgress && xhr.upload) {
         xhr.upload.onprogress = (e) => {
@@ -222,8 +220,9 @@ const API = {
     const recordPayload = {
       name: file.name,
       size: cloudflareRes.size || file.size,
-      mime_type: cloudflareRes.media_type || file.type || 'application/octet-stream',
+      mime_type: cloudflareRes.mime_type || cloudflareRes.media_type || file.type || 'application/octet-stream',
       hosted_url: hostedUrl,
+      delete_token: cloudflareRes.delete_token || cloudflareRes.deleteToken || '',
       folder_id: folderId && folderId !== 'root' ? folderId : null,
       is_public: isPublic
     };
@@ -258,12 +257,9 @@ const API = {
     // 1. Fetch & host via Cloudflare Worker
     const hostEndpoint = this.getHostUrlEndpoint();
     const targetUrl = `${hostEndpoint}?url=${encodeURIComponent(remoteUrl.trim())}`;
-    const headers = {
-      'X-Shelfie-Origin': 'shelfie-platform'
-    };
+    const headers = {};
     if (this.uploadApiKey) {
       headers['X-API-Key'] = this.uploadApiKey;
-      headers['X-Shelfie-Token'] = this.uploadApiKey;
     }
     const res = await fetch(targetUrl, { headers });
     if (!res.ok) {
@@ -279,8 +275,9 @@ const API = {
     const recordPayload = {
       name: data.filename || 'remote_file',
       size: data.size || 0,
-      mime_type: data.media_type || 'application/octet-stream',
+      mime_type: data.mime_type || data.media_type || 'application/octet-stream',
       hosted_url: hostedUrl,
+      delete_token: data.delete_token || data.deleteToken || '',
       folder_id: folderId && folderId !== 'root' ? folderId : null,
       is_public: isPublic
     };

@@ -833,7 +833,7 @@ def get_config():
     data = {
         "success": True,
         "media_host_url": MEDIA_HOST_URL,
-        "upload_url": f"{MEDIA_HOST_URL}/upload",
+        "upload_url": f"{MEDIA_HOST_URL}/api/upload",
         "hosturl_url": f"{MEDIA_HOST_URL}/hosturl"
     }
     if auth_user:

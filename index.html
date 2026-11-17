@@ -1,0 +1,1165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Haul Pro - Cloud Storage & Media Platform</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'><defs><linearGradient id='g' x1='4' y1='4' x2='36' y2='36' gradientUnits='userSpaceOnUse'><stop offset='0%25' stop-color='%231a73e8'/><stop offset='100%25' stop-color='%230d47a1'/></linearGradient></defs><rect x='3' y='3' width='34' height='34' rx='10' fill='url(%23g)'/><path d='M12 11V29M28 11V29M12 20H28' stroke='white' stroke-width='3.5' stroke-linecap='round'/><circle cx='20' cy='13.5' r='2.2' fill='%2300e5ff'/></svg>">
+  <link rel="stylesheet" href="/css/drive.css">
+  <link rel="stylesheet" href="/css/viewer.css">
+  <link rel="stylesheet" href="/css/auth.css">
+</head>
+<body>
+
+  <!-- APP INITIAL LOADING SCREEN -->
+  <div id="app-loading-screen" class="app-loading-screen">
+    <div class="app-loading-card">
+      <div class="app-loading-logo">
+        <svg width="52" height="52" viewBox="0 0 40 40" fill="none">
+          <defs>
+            <linearGradient id="g-loader" x1="4" y1="4" x2="36" y2="36" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stop-color="#1a73e8"/>
+              <stop offset="100%" stop-color="#0d47a1"/>
+            </linearGradient>
+          </defs>
+          <rect x="3" y="3" width="34" height="34" rx="10" fill="url(#g-loader)"/>
+          <path d="M12 11V29M28 11V29M12 20H28" stroke="white" stroke-width="3.5" stroke-linecap="round"/>
+          <circle cx="20" cy="13.5" r="2.2" fill="#00e5ff"/>
+        </svg>
+      </div>
+      <div class="app-loading-title">Haul Pro</div>
+      <div class="app-loading-bar">
+        <div class="app-loading-progress"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOPBAR -->
+  <header class="topbar">
+    <div class="topbar-left">
+      <button id="mobile-menu-btn" class="icon-btn mobile-menu-btn" title="Open navigation">
+        <span id="mobile-menu-icon"></span>
+      </button>
+      <a href="/" class="brand-logo">
+        <span id="logo-icon-container"></span>
+        <span class="brand-title">Haul Pro</span>
+      </a>
+    </div>
+
+    <div class="topbar-center">
+      <div class="search-box">
+        <span id="search-icon-container"></span>
+        <input type="text" id="search-input" class="search-input" placeholder="Search in Drive..." autocomplete="off">
+        <span id="filter-icon-container" style="cursor: pointer;"></span>
+      </div>
+    </div>
+
+    <div class="topbar-right">
+      <button id="topbar-signin-btn" class="topbar-signin-btn" style="display: none;">Sign in</button>
+      <button id="topbar-alerts-btn" class="icon-btn topbar-alerts-btn" title="Recent Activity & Alerts" onclick="Drive.switchNav('activity')">
+        <span id="topbar-alerts-icon"></span>
+        <span id="topbar-alerts-badge" class="alert-pulse-dot" style="display: none;"></span>
+      </button>
+      <button id="topbar-settings-btn" class="icon-btn topbar-settings-btn" title="Settings">
+        <span id="topbar-settings-icon"></span>
+      </button>
+      <button id="user-profile-btn" class="user-profile-btn" title="Haul Account">U</button>
+      
+      <!-- User Profile Dropdown -->
+      <div id="profile-dropdown" class="profile-dropdown">
+        <div id="profile-avatar-lg" class="profile-avatar-lg">
+          <span id="profile-dropdown-initial">U</span>
+          <img id="profile-dropdown-img" class="dropdown-avatar-img" style="display: none;" alt="" referrerpolicy="no-referrer">
+        </div>
+        <div id="profile-name" class="profile-name">User</div>
+        <div id="profile-email" class="profile-email">user@haul.pro</div>
+        <div id="profile-username-tag" class="profile-username-tag">@username</div>
+        <p id="profile-dropdown-bio" class="profile-dropdown-bio" style="display: none;"></p>
+
+        <div class="profile-dropdown-divider"></div>
+
+        <button id="profile-edit-btn" class="profile-menu-item" title="Update profile photo, name, bio, and username">
+          <span id="profile-edit-icon"></span>
+          <div class="menu-item-text">
+            <div class="menu-item-title">Edit Profile</div>
+            <div class="menu-item-sub">Photo, bio, name, handle</div>
+          </div>
+        </button>
+
+        <button id="profile-public-link-btn" class="profile-menu-item" title="View your public profile">
+          <span id="profile-globe-icon"></span>
+          <div class="menu-item-text">
+            <div class="menu-item-title">My Public Profile</div>
+            <div id="profile-public-url-preview" class="menu-item-sub">Loading link...</div>
+          </div>
+        </button>
+
+        <button id="profile-copy-url-btn" class="profile-menu-item" title="Copy link to your public profile">
+          <span id="profile-link-icon"></span>
+          <div class="menu-item-text">
+            <div class="menu-item-title">Copy Public Link</div>
+            <div class="menu-item-sub">Share with friends or audience</div>
+          </div>
+        </button>
+
+        <button id="profile-settings-btn" class="profile-menu-item" title="Preferences, API tokens, and storage">
+          <span id="profile-settings-icon"></span>
+          <div class="menu-item-text">
+            <div class="menu-item-title">Settings</div>
+            <div class="menu-item-sub">Preferences, security & storage</div>
+          </div>
+        </button>
+
+        <div class="profile-dropdown-divider"></div>
+        <button id="profile-logout-btn" class="profile-logout-btn">Sign out</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- APP MAIN CONTAINER -->
+  <div class="app-container">
+
+    <!-- SIDEBAR BACKDROP (FOR MOBILE DRAWER) -->
+    <div id="sidebar-backdrop" class="sidebar-backdrop"></div>
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar" id="app-sidebar">
+      <button id="new-btn" class="new-btn">
+        <span id="new-icon-container"></span>
+        <span>New</span>
+      </button>
+
+      <!-- New Dropdown Menu -->
+      <div id="new-dropdown-menu" class="dropdown-menu">
+        <div id="menu-new-folder" class="dropdown-item">
+          <span id="menu-folder-icon"></span>
+          <span>New folder</span>
+        </div>
+        <div style="height: 1px; background: #e8eaed; margin: 4px 0;"></div>
+        <div id="menu-upload-file" class="dropdown-item">
+          <span id="menu-upload-icon"></span>
+          <span>File upload</span>
+        </div>
+        <div id="menu-upload-url" class="dropdown-item">
+          <span id="menu-url-icon"></span>
+          <span>Upload from URL</span>
+        </div>
+      </div>
+
+      <!-- Hidden File Upload Input -->
+      <input type="file" id="file-upload-input" multiple style="display: none;">
+
+      <!-- Nav Items -->
+      <ul class="nav-list">
+        <li class="nav-item active" data-nav="drive">
+          <span id="nav-drive-icon"></span>
+          <span>My Drive</span>
+        </li>
+        <li class="nav-item" data-nav="recent">
+          <span id="nav-recent-icon"></span>
+          <span>Recent</span>
+        </li>
+        <li class="nav-item" data-nav="activity">
+          <span id="nav-activity-icon"></span>
+          <span data-i18n="activity">Activity</span>
+        </li>
+        <li class="nav-item" data-nav="starred">
+          <span id="nav-starred-icon"></span>
+          <span>Starred</span>
+        </li>
+        <li class="nav-item" data-nav="trash">
+          <span id="nav-trash-icon"></span>
+          <span>Trash</span>
+        </li>
+      </ul>
+
+      <!-- Storage Meter -->
+      <div class="sidebar-storage">
+        <div class="storage-title">
+          <span id="storage-icon-container"></span>
+          <span>Storage</span>
+        </div>
+        <div class="storage-bar-track">
+          <div id="storage-bar-fill" class="storage-bar-fill"></div>
+        </div>
+        <div id="storage-text" class="storage-text">0 B of 15 GB used</div>
+      </div>
+
+      <!-- Sidebar Quick Links (Desktop & Mobile Drawer) -->
+      <div class="sidebar-footer-section">
+        <button type="button" class="sidebar-action-item" id="sidebar-guide-btn" onclick="Settings.open('guide')">
+          <span class="sidebar-item-icon" id="sidebar-guide-icon"></span>
+          <span data-i18n="guide">Guide & Help</span>
+        </button>
+        <button type="button" class="sidebar-action-item" id="sidebar-settings-btn" onclick="Settings.open('general')">
+          <span class="sidebar-item-icon" id="sidebar-settings-icon"></span>
+          <span data-i18n="settings">Settings</span>
+        </button>
+        <button type="button" class="sidebar-action-item danger" id="sidebar-logout-btn" onclick="Auth.handleLogout()">
+          <span class="sidebar-item-icon" id="sidebar-logout-icon"></span>
+          <span data-i18n="signout">Sign Out</span>
+        </button>
+      </div>
+    </aside>
+
+    <!-- MAIN CONTENT EXPLORER -->
+    <main class="main-content">
+      <!-- Instagram-Style Profile Header (Matches user wireframe) -->
+      <div id="public-profile-banner" class="instagram-profile-card" style="display: none;">
+        <div class="insta-profile-header">
+          <!-- Circular Profile Image with change overlay if owner -->
+          <div class="insta-avatar-container">
+            <div id="public-profile-avatar" class="insta-profile-avatar">
+              <span id="public-avatar-initial">U</span>
+              <img id="public-avatar-img" class="insta-avatar-img" style="display: none;" alt="" referrerpolicy="no-referrer">
+            </div>
+            <button id="insta-change-avatar-btn" class="insta-avatar-change-btn" title="Change profile photo" style="display: none;">
+              <span id="insta-camera-icon"></span>
+            </button>
+            <input type="file" id="insta-avatar-file-input" accept="image/*" style="display: none;">
+          </div>
+
+          <div class="insta-meta-container">
+            <div class="insta-name-row">
+              <h2 id="public-profile-name" class="insta-profile-name">User Name</h2>
+              <span id="public-profile-username" class="insta-profile-handle">@username</span>
+              <button id="banner-edit-profile-btn" class="insta-edit-profile-btn" style="display: none;">
+                <span id="banner-edit-icon"></span>
+                <span>Edit Profile</span>
+              </button>
+            </div>
+
+            <!-- Small Bio (matches user wireframe) -->
+            <p id="public-profile-bio" class="insta-profile-bio"></p>
+
+            <div class="insta-actions-row">
+              <span id="public-profile-file-count" class="insta-stat-pill">0 files</span>
+              <button id="copy-public-profile-link-btn" class="profile-action-btn">
+                <span id="profile-share-icon-holder"></span>
+                <span>Share Profile</span>
+              </button>
+              <button id="owner-back-drive-btn" class="profile-action-btn primary" style="display: none;">
+                <span>Back to My Drive</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Wireframe Tab Bar: [ PRIVATE | PUBLIC ] -->
+        <div id="profile-tabs-bar" class="insta-tabs-bar" style="display: none;">
+          <button id="profile-tab-private" class="insta-tab-btn" data-tab="private">
+            <span id="tab-private-icon"></span>
+            <span>PRIVATE</span>
+            <span id="tab-private-count" class="tab-badge">0</span>
+          </button>
+          <button id="profile-tab-public" class="insta-tab-btn active" data-tab="public">
+            <span id="tab-public-icon"></span>
+            <span>PUBLIC</span>
+            <span id="tab-public-count" class="tab-badge">0</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Owner Mode Info Bar -->
+      <div id="owner-mode-bar" class="owner-mode-bar" style="display: none;">
+        <span id="owner-bar-icon"></span>
+        <span>Owner Mode: Click any item's visibility badge to move it between Private and Public.</span>
+      </div>
+
+      <!-- Breadcrumbs & View Toggle Toolbar -->
+      <div class="toolbar">
+        <div id="breadcrumbs" class="breadcrumbs">
+          <div class="breadcrumb-item">My Drive</div>
+        </div>
+        <div class="actions-row">
+          <button id="toggle-view-btn" class="icon-btn" title="Switch layout">
+            <!-- Injected via JS -->
+          </button>
+        </div>
+      </div>
+
+      <!-- Filter Chips -->
+      <div class="filter-chips">
+        <button class="chip active" data-category="all">All</button>
+        <button class="chip" data-category="image">Photos & Wallpapers</button>
+        <button class="chip" data-category="book">eBooks & PDFs</button>
+        <button class="chip" data-category="video">Videos</button>
+        <button class="chip" data-category="document">Documents</button>
+        <button class="chip" data-category="audio">Audio</button>
+        <button class="chip" data-category="code">Code & Notes</button>
+        <button class="chip" data-category="archive">Archives</button>
+      </div>
+
+      <!-- File & Folder Explorer View -->
+      <div id="explorer-view" class="explorer-view">
+        <!-- Folders Section -->
+        <div id="folders-section" style="display: none;">
+          <div class="section-label">Folders</div>
+          <div id="folders-grid" class="folders-grid"></div>
+        </div>
+
+        <!-- Files Section -->
+        <div class="section-label" id="files-section-label" style="display: none;">Files</div>
+        <div id="files-container"></div>
+
+        <!-- Activity & Alerts Feed View -->
+        <div id="activity-view" class="activity-view" style="display: none;">
+          <div class="activity-header">
+            <div class="activity-header-left">
+              <h3 class="activity-headline" data-i18n="activity_log">Activity & Alerts</h3>
+              <p class="activity-subheadline">Real-time log of your file uploads, sharing, visibility changes, and deletions</p>
+            </div>
+            <button type="button" class="btn-text activity-clear-btn" id="activity-clear-btn" onclick="Drive.clearActivities()">
+              Clear Activity
+            </button>
+          </div>
+          <div id="activity-list" class="activity-list"></div>
+        </div>
+
+        <!-- Infinite Scroll Loading Indicator -->
+        <div id="infinite-loader" class="infinite-loader hidden">
+          <div class="drive-spinner"></div>
+          <span>Loading items...</span>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- DRAG & DROP FULL SCREEN OVERLAY -->
+  <div id="dropzone-overlay" class="dropzone-overlay">
+    <div id="dropzone-icon-container"></div>
+    <div class="dropzone-text">Drop files to upload them to Haul Pro</div>
+  </div>
+
+  <!-- FLOATING UPLOAD DRAWER -->
+  <div id="upload-drawer" class="upload-drawer">
+    <div class="upload-drawer-header">
+      <span id="upload-drawer-count">Uploading...</span>
+      <button class="icon-btn" style="color: white; width: 28px; height: 28px;" onclick="document.getElementById('upload-drawer').style.display='none'">
+        <span id="drawer-close-icon"></span>
+      </button>
+    </div>
+    <div id="upload-drawer-list" class="upload-drawer-list"></div>
+  </div>
+
+  <!-- CONTEXT MENU -->
+  <div id="context-menu" class="context-menu"></div>
+
+  <!-- IN-APP FILE VIEWER MODAL -->
+  <div id="viewer-modal" class="viewer-modal">
+    <div class="viewer-header">
+      <div class="viewer-title-info">
+        <button id="viewer-close-btn" class="viewer-btn" title="Close preview">
+          <span id="viewer-close-icon"></span>
+        </button>
+        <div id="viewer-filename" class="viewer-filename">File Name</div>
+      </div>
+      <div class="viewer-actions">
+        <button id="viewer-download-btn" class="viewer-btn" title="Download">
+          <span id="viewer-download-icon"></span>
+        </button>
+        <button id="viewer-copy-link-btn" class="viewer-btn" title="Copy direct link">
+          <span id="viewer-link-icon"></span>
+        </button>
+      </div>
+    </div>
+    <div id="viewer-body" class="viewer-body"></div>
+    
+    <!-- Image Zoom Controls -->
+    <div id="viewer-zoom-controls" class="viewer-zoom-controls" style="display: none;">
+      <button id="viewer-zoom-out" class="viewer-btn" title="Zoom out">-</button>
+      <button id="viewer-zoom-reset" class="viewer-btn" title="Reset zoom" style="font-size: 11px;">100%</button>
+      <button id="viewer-zoom-in" class="viewer-btn" title="Zoom in">+</button>
+    </div>
+  </div>
+
+  <!-- MULTI-USER AUTH MODAL -->
+  <div id="auth-backdrop" class="auth-backdrop">
+    <div class="auth-card">
+      <div class="auth-header">
+        <div id="auth-logo-container"></div>
+        <h2 id="auth-title" class="auth-title">Sign in</h2>
+        <p id="auth-subtitle" class="auth-subtitle">Continue to Haul Pro</p>
+      </div>
+
+      <div id="auth-error" class="auth-error"></div>
+
+      <form id="auth-form" class="auth-form">
+        <div id="auth-name-group" class="auth-input-group" style="display: none;">
+          <label class="auth-label">Full Name</label>
+          <input type="text" id="auth-name" class="auth-input" placeholder="Your name">
+        </div>
+
+        <div class="auth-input-group">
+          <label class="auth-label">Email Address</label>
+          <input type="email" id="auth-email" class="auth-input" placeholder="name@example.com" required>
+        </div>
+
+        <div class="auth-input-group">
+          <label class="auth-label">Password</label>
+          <input type="password" id="auth-password" class="auth-input" placeholder="Enter password (min 6 characters)" required>
+        </div>
+
+        <div class="auth-footer">
+          <button type="button" id="auth-switch-mode-btn" class="auth-btn-secondary">Create account</button>
+          <button type="submit" id="auth-submit-btn" class="auth-btn-primary">Sign in</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- NEW FOLDER MODAL -->
+  <div id="new-folder-modal" class="modal-backdrop" style="display: none;">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 class="modal-title">New folder</h3>
+      </div>
+      <div class="modal-body">
+        <input type="text" id="new-folder-input" class="modal-input" placeholder="Folder name" value="Untitled folder" autocomplete="off">
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn-text" id="new-folder-cancel-btn">Cancel</button>
+        <button type="button" class="btn-filled" id="new-folder-create-btn">Create</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- REMOTE URL UPLOAD MODAL -->
+  <div id="url-upload-modal" class="modal-backdrop" style="display: none;">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 class="modal-title">Upload from URL</h3>
+        <button type="button" class="icon-btn" onclick="Uploader.closeUrlUploadModal()" style="width: 32px; height: 32px;">
+          <span id="url-upload-close-icon"></span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size: 13px; color: var(--text-secondary, #5f6368); margin-bottom: 14px;">
+          Enter any image, media, or file URL to download and host it directly on your Cloudflare edge storage.
+        </p>
+        <input type="url" id="url-upload-input" class="modal-input" placeholder="https://example.com/image.jpg" autocomplete="off" onkeydown="if(event.key==='Enter') Uploader.submitUrlUpload()">
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn-text" onclick="Uploader.closeUrlUploadModal()">Cancel</button>
+        <button type="button" class="btn-filled" id="url-upload-submit-btn" onclick="Uploader.submitUrlUpload()">Upload</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MOVE ITEM MODAL -->
+  <div id="move-modal" class="modal-backdrop" style="display: none;">
+    <div class="modal-card modal-card-wide">
+      <div class="modal-header">
+        <h3 class="modal-title" id="move-modal-title">Move item</h3>
+        <button type="button" class="icon-btn" id="move-modal-close-btn" style="width: 32px; height: 32px;">
+          <span id="move-modal-close-icon"></span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="move-modal-hint">Select a destination folder:</div>
+        <div id="move-folder-tree" class="folder-picker-list"></div>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn-text" id="move-cancel-btn">Cancel</button>
+        <button type="button" class="btn-filled" id="move-confirm-btn" disabled>Move here</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- INSTAGRAM-STYLE EDIT PROFILE MODAL -->
+  <div id="edit-profile-modal" class="modal-backdrop" style="display: none;">
+    <div class="modal-card modal-card-wide">
+      <div class="modal-header">
+        <h3 class="modal-title">Edit profile</h3>
+        <button type="button" class="icon-btn" id="edit-profile-close-btn" style="width: 32px; height: 32px;">
+          <span id="edit-profile-close-icon"></span>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <!-- Photo upload section -->
+        <div class="edit-profile-photo-row">
+          <div class="edit-photo-preview-wrap">
+            <div id="edit-modal-avatar-preview" class="insta-profile-avatar edit-modal-avatar">
+              <span id="edit-modal-avatar-initial">U</span>
+              <img id="edit-modal-avatar-img" class="insta-avatar-img" style="display: none;" alt="" referrerpolicy="no-referrer">
+            </div>
+            <label for="edit-modal-avatar-input" class="change-photo-badge" title="Upload new photo">
+              <span id="edit-camera-icon"></span>
+            </label>
+            <input type="file" id="edit-modal-avatar-input" accept="image/*" style="display: none;">
+          </div>
+          <div class="edit-photo-info">
+            <div class="edit-photo-name" id="edit-photo-name-display">User</div>
+            <label for="edit-modal-avatar-input" class="change-photo-link">Change profile photo</label>
+          </div>
+        </div>
+
+        <form id="edit-profile-form" class="edit-profile-form">
+          <div class="modal-input-group">
+            <label class="modal-field-label">Name</label>
+            <input type="text" id="edit-name-input" class="modal-input" placeholder="Your name" maxlength="50" required>
+          </div>
+
+          <div class="modal-input-group">
+            <label class="modal-field-label">Username</label>
+            <div class="modal-username-wrap">
+              <span class="username-prefix">@</span>
+              <input type="text" id="edit-username-input" class="modal-input with-prefix" placeholder="username" maxlength="30" required>
+            </div>
+            <div class="field-hint" id="edit-profile-url-hint">shelfie.dhyey.cc/username</div>
+          </div>
+
+          <div class="modal-input-group">
+            <label class="modal-field-label">Small Bio</label>
+            <textarea id="edit-bio-input" class="modal-textarea" rows="3" maxlength="200" placeholder="Write a small bio about yourself..."></textarea>
+            <div class="bio-counter"><span id="bio-char-count">0</span> / 200</div>
+          </div>
+
+          <div id="edit-profile-error" class="modal-error" style="display: none;"></div>
+
+          <div class="modal-actions">
+            <button type="button" class="btn-text" id="edit-profile-cancel-btn">Cancel</button>
+            <button type="submit" class="btn-filled" id="edit-profile-save-btn">Save</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- SHARE FOLDER MODAL -->
+  <div id="share-folder-modal" class="modal-backdrop" style="display: none;">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 class="modal-title" id="share-folder-title">Share folder</h3>
+        <button type="button" class="icon-btn" id="share-folder-close-btn" style="width: 32px; height: 32px;">
+          <span id="share-folder-close-icon"></span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="share-folder-status-box">
+          <div id="share-folder-badge" class="vis-badge private">Private</div>
+          <p id="share-folder-desc" class="share-folder-desc">This folder is currently private. Anyone with this link can view its contents once you make it Public.</p>
+        </div>
+
+        <div class="modal-input-group" style="margin-top: 14px;">
+          <label class="modal-field-label">Folder Link</label>
+          <div class="modal-username-wrap">
+            <input type="text" id="share-folder-link-input" class="modal-input" readonly>
+          </div>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn-text" id="share-folder-toggle-vis-btn">Make Public</button>
+        <button type="button" class="btn-filled" id="share-folder-copy-btn">Copy link</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MULTI-SELECT FLOATING ACTION BAR -->
+  <div id="multi-select-bar" class="multi-select-bar" style="display: none;">
+    <div class="multi-select-left">
+      <button type="button" class="multi-close-btn" onclick="Drive.clearSelection()" title="Deselect all">
+        <span id="multi-select-close-icon"></span>
+      </button>
+      <span id="multi-select-count" class="multi-select-count">0 items selected</span>
+    </div>
+    <div class="multi-select-actions">
+      <button type="button" class="multi-action-btn" onclick="Drive.bulkSetVisibility(true)" title="Publish selected files">
+        <span id="multi-globe-icon"></span>
+        <span>Make Public</span>
+      </button>
+      <button type="button" class="multi-action-btn" onclick="Drive.bulkSetVisibility(false)" title="Hide selected files">
+        <span id="multi-lock-icon"></span>
+        <span>Make Private</span>
+      </button>
+      <button type="button" class="multi-action-btn" onclick="Drive.bulkMove()" title="Move selected files to a folder">
+        <span id="multi-move-icon"></span>
+        <span>Move to...</span>
+      </button>
+      <button type="button" class="multi-action-btn danger" onclick="Drive.bulkDelete()" title="Delete selected files">
+        <span id="multi-trash-icon"></span>
+        <span>Delete</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- APPLE-STYLE SETTINGS MODAL -->
+  <div id="settings-modal" class="modal-backdrop" style="display: none;">
+    <div class="modal-card apple-modal settings-modal-card">
+      <div class="modal-header apple-modal-header">
+        <div class="settings-header-left">
+          <span id="settings-modal-icon" class="settings-modal-icon"></span>
+          <h3 class="modal-title">Settings</h3>
+        </div>
+        <button type="button" class="icon-btn apple-close-btn" id="settings-close-btn" title="Close">
+          <span id="settings-close-icon"></span>
+        </button>
+      </div>
+
+      <!-- Segmented Navigation (Apple macOS / iOS style) -->
+      <div class="settings-nav-bar">
+        <button type="button" class="settings-nav-item active" data-tab="general">
+          <span id="settings-nav-general-icon"></span>
+          <span data-i18n="general">General</span>
+        </button>
+        <button type="button" class="settings-nav-item" data-tab="guide">
+          <span id="settings-nav-guide-icon"></span>
+          <span data-i18n="guide">Guide</span>
+        </button>
+        <button type="button" class="settings-nav-item" data-tab="help">
+          <span id="settings-nav-help-icon"></span>
+          <span data-i18n="help">Help</span>
+        </button>
+        <button type="button" class="settings-nav-item" data-tab="storage">
+          <span id="settings-nav-storage-icon"></span>
+          <span data-i18n="storage">Storage</span>
+        </button>
+        <button type="button" class="settings-nav-item" data-tab="security">
+          <span id="settings-nav-security-icon"></span>
+          <span data-i18n="security">Security</span>
+        </button>
+        <button type="button" class="settings-nav-item" data-tab="legal">
+          <span id="settings-nav-legal-icon"></span>
+          <span data-i18n="legal">Legal</span>
+        </button>
+      </div>
+
+      <div class="modal-body settings-modal-body">
+        <!-- TAB 1: GENERAL PREFERENCES -->
+        <div id="settings-tab-general" class="settings-tab-pane active">
+          <div class="apple-group">
+            <div class="apple-group-header">PREFERENCES</div>
+            <div class="apple-cell">
+              <div class="apple-cell-info">
+                <div class="apple-cell-title" data-i18n="default_layout">Default Layout</div>
+                <div class="apple-cell-sub" data-i18n="default_layout_sub">Choose how your files are displayed by default</div>
+              </div>
+              <div class="apple-segmented-control" id="pref-view-segmented">
+                <button type="button" class="apple-segmented-btn active" data-value="grid">Grid</button>
+                <button type="button" class="apple-segmented-btn" data-value="list">List</button>
+              </div>
+            </div>
+            <div class="apple-cell">
+              <div class="apple-cell-info">
+                <div class="apple-cell-title" data-i18n="default_vis">Default Upload Visibility</div>
+                <div class="apple-cell-sub" data-i18n="default_vis_sub">Uploaded files will be private unless you publish them</div>
+              </div>
+              <div class="apple-segmented-control" id="pref-vis-segmented">
+                <button type="button" class="apple-segmented-btn active" data-value="private">Private</button>
+                <button type="button" class="apple-segmented-btn" data-value="public">Public</button>
+              </div>
+            </div>
+            <div class="apple-cell">
+              <div class="apple-cell-info">
+                <div class="apple-cell-title" data-i18n="autocopy">Auto-Copy Link</div>
+                <div class="apple-cell-sub" data-i18n="autocopy_sub">Automatically copy direct media link to clipboard upon upload</div>
+              </div>
+              <label class="apple-toggle">
+                <input type="checkbox" id="pref-autocopy-toggle">
+                <span class="apple-toggle-slider"></span>
+              </label>
+            </div>
+            <div class="apple-cell">
+              <div class="apple-cell-info">
+                <div class="apple-cell-title" data-i18n="language">Display Language</div>
+                <div class="apple-cell-sub" data-i18n="language_sub">Choose interface display language</div>
+              </div>
+              <div class="apple-select-wrapper">
+                <select id="pref-language-select" class="apple-select">
+                  <option value="en">English (US)</option>
+                  <option value="es">Español (Spanish)</option>
+                  <option value="fr">Français (French)</option>
+                  <option value="de">Deutsch (German)</option>
+                  <option value="hi">हिन्दी (Hindi)</option>
+                  <option value="ja">日本語 (Japanese)</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB: BEGINNER GUIDE -->
+        <div id="settings-tab-guide" class="settings-tab-pane">
+          <div class="apple-group">
+            <div class="apple-group-header">BEGINNER'S GUIDE & OVERVIEW</div>
+            
+            <div class="guide-cards-container">
+              <div class="guide-card">
+                <div class="guide-card-icon-bubble" id="guide-step1-icon"></div>
+                <div class="guide-card-content">
+                  <h4 class="guide-card-title">1. Upload Anything Without Limits</h4>
+                  <p class="guide-card-desc">Click <strong>+ New</strong> or drag and drop files anywhere. Upload photos, 4K videos, audio tracks, PDFs, archives, or code files. All files are preserved in original lossless quality.</p>
+                </div>
+              </div>
+
+              <div class="guide-card">
+                <div class="guide-card-icon-bubble" id="guide-step2-icon"></div>
+                <div class="guide-card-content">
+                  <h4 class="guide-card-title">2. Folders & Effortless Organization</h4>
+                  <p class="guide-card-desc">Create folders to organize your collection. Drag and drop items into folders or click the 3-dots menu to move files between folders. Nested folders are fully supported.</p>
+                </div>
+              </div>
+
+              <div class="guide-card">
+                <div class="guide-card-icon-bubble" id="guide-step3-icon"></div>
+                <div class="guide-card-content">
+                  <h4 class="guide-card-title">3. Private by Default with Public Sharing</h4>
+                  <p class="guide-card-desc">Every uploaded file is strictly <strong>Private</strong> by default. When you are ready to publish, click the badge or 3-dots menu to switch to <strong>Public</strong>. Public items appear on your profile.</p>
+                </div>
+              </div>
+
+              <div class="guide-card">
+                <div class="guide-card-icon-bubble" id="guide-step4-icon"></div>
+                <div class="guide-card-content">
+                  <h4 class="guide-card-title">4. Personalized Public Profile Showcase</h4>
+                  <p class="guide-card-desc">Your unique link (e.g. <code>shelfie.dhyey.cc/yourname</code>) serves as your link-in-bio showcase. Customize your profile photo, display name, and bio to present your portfolio to anyone.</p>
+                </div>
+              </div>
+
+              <div class="guide-card">
+                <div class="guide-card-icon-bubble" id="guide-step5-icon"></div>
+                <div class="guide-card-content">
+                  <h4 class="guide-card-title">5. Lightning-Fast CDN Direct Links</h4>
+                  <p class="guide-card-desc">Every file comes with a direct CDN URL powered by Telegram Cloud & Cloudflare Edge. Perfect for embedding in Discord, GitHub READMEs, websites, and forums.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB: HELP CENTER & FAQS -->
+        <div id="settings-tab-help" class="settings-tab-pane">
+          <div class="apple-group">
+            <div class="apple-group-header">FREQUENTLY ASKED QUESTIONS</div>
+            <div class="faq-list">
+              <div class="faq-item">
+                <button type="button" class="faq-question">
+                  <span>What file formats and sizes are supported?</span>
+                  <span class="faq-chevron"></span>
+                </button>
+                <div class="faq-answer">
+                  <p>Haul Pro supports all media formats: images (JPG, PNG, WEBP, GIF, SVG), videos (MP4, MKV, MOV, WEBM), audio (MP3, WAV, FLAC, AAC), documents (PDF, DOCX, TXT, MD), archives (ZIP, RAR, 7Z, TAR), and code (JS, PY, HTML, CSS, JSON). Individual files up to 2 GB are supported.</p>
+                </div>
+              </div>
+
+              <div class="faq-item">
+                <button type="button" class="faq-question">
+                  <span>How does Private vs. Public visibility work?</span>
+                  <span class="faq-chevron"></span>
+                </button>
+                <div class="faq-answer">
+                  <p>Files marked <strong>Private</strong> can only be accessed while signed in to your account. Files marked <strong>Public</strong> are visible to visitors on your public showcase page (<code>shelfie.dhyey.cc/username</code>) and can be downloaded or viewed without an account.</p>
+                </div>
+              </div>
+
+              <div class="faq-item">
+                <button type="button" class="faq-question">
+                  <span>How do I share a folder with another user?</span>
+                  <span class="faq-chevron"></span>
+                </button>
+                <div class="faq-answer">
+                  <p>Right-click (or tap the 3 dots) on any folder and select <strong>Make Public</strong>. You can then copy the folder's direct link to share with anyone. Anyone with the link can browse and download files inside it.</p>
+                </div>
+              </div>
+
+              <div class="faq-item">
+                <button type="button" class="faq-question">
+                  <span>How do I edit my public profile picture and bio?</span>
+                  <span class="faq-chevron"></span>
+                </button>
+                <div class="faq-answer">
+                  <p>Click your avatar in the top-right corner to visit your public profile. Click <strong>Edit Profile</strong> to change your name, handle, and bio, or click the camera icon on your avatar to upload a profile photo.</p>
+                </div>
+              </div>
+
+              <div class="faq-item">
+                <button type="button" class="faq-question">
+                  <span>How does Haul Pro store and deliver files?</span>
+                  <span class="faq-chevron"></span>
+                </button>
+                <div class="faq-answer">
+                  <p>Haul Pro uses the CommonThread hybrid engine. Files are securely chunked and hosted across high-availability Telegram Cloud storage backends accelerated by Cloudflare R2 Edge workers for global sub-second delivery.</p>
+                </div>
+              </div>
+
+              <div class="faq-item">
+                <button type="button" class="faq-question">
+                  <span>Can I access and manage my files on mobile devices?</span>
+                  <span class="faq-chevron"></span>
+                </button>
+                <div class="faq-answer">
+                  <p>Yes! Haul Pro is fully optimized for mobile devices with an Apple-style bottom tab bar, single-tap folder navigation, fast touch uploads, and full public profile showcase capabilities.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 2: STORAGE BREAKDOWN -->
+        <div id="settings-tab-storage" class="settings-tab-pane">
+          <div class="apple-group">
+            <div class="apple-group-header">STORAGE USAGE & BREAKDOWN</div>
+            <div class="storage-breakdown-card">
+              <div class="storage-usage-headline">
+                <span id="storage-detail-used" class="storage-headline-val">0 B</span>
+                <span class="storage-headline-sub">of 15 GB total</span>
+              </div>
+              <div class="storage-segmented-bar" id="storage-segmented-bar">
+                <div class="seg-fill seg-image" id="seg-bar-image" style="width: 0%;" title="Images"></div>
+                <div class="seg-fill seg-video" id="seg-bar-video" style="width: 0%;" title="Videos"></div>
+                <div class="seg-fill seg-doc" id="seg-bar-doc" style="width: 0%;" title="Documents"></div>
+                <div class="seg-fill seg-audio" id="seg-bar-audio" style="width: 0%;" title="Audio"></div>
+                <div class="seg-fill seg-other" id="seg-bar-other" style="width: 0%;" title="Other"></div>
+              </div>
+              <div class="storage-legend" id="storage-legend">
+                <div class="legend-item"><span class="legend-dot seg-image"></span>Images: <span id="leg-image-size">0 B</span></div>
+                <div class="legend-item"><span class="legend-dot seg-video"></span>Videos: <span id="leg-video-size">0 B</span></div>
+                <div class="legend-item"><span class="legend-dot seg-doc"></span>Documents: <span id="leg-doc-size">0 B</span></div>
+                <div class="legend-item"><span class="legend-dot seg-audio"></span>Audio: <span id="leg-audio-size">0 B</span></div>
+                <div class="legend-item"><span class="legend-dot seg-other"></span>Others: <span id="leg-other-size">0 B</span></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="apple-group" style="margin-top: 16px;">
+            <div class="apple-group-header">RECLAIM STORAGE</div>
+            <div class="apple-cell">
+              <div class="apple-cell-info">
+                <div class="apple-cell-title">Empty Trash</div>
+                <div class="apple-cell-sub" id="settings-trash-info">Permanently purge deleted files to recover storage quota</div>
+              </div>
+              <button type="button" class="apple-btn-danger" id="empty-trash-btn">Empty Trash</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 3: SECURITY & ACCOUNT MANAGEMENT -->
+        <div id="settings-tab-security" class="settings-tab-pane">
+          <form id="change-password-form">
+            <div class="apple-group">
+              <div class="apple-group-header">CHANGE PASSWORD</div>
+              <div class="apple-input-row">
+                <label>Current Password</label>
+                <input type="password" id="pw-current" placeholder="Current password" required>
+              </div>
+              <div class="apple-input-row">
+                <label>New Password</label>
+                <input type="password" id="pw-new" placeholder="At least 6 characters" minlength="6" required>
+              </div>
+              <div class="apple-input-row">
+                <label>Confirm Password</label>
+                <input type="password" id="pw-confirm" placeholder="Re-enter new password" minlength="6" required>
+              </div>
+            </div>
+            <div id="change-pw-error" class="modal-error" style="display: none; margin-top: 12px;"></div>
+            <div id="change-pw-success" class="modal-success" style="display: none; margin-top: 12px;"></div>
+            <div style="margin-top: 16px; display: flex; justify-content: flex-end;">
+              <button type="submit" class="btn-filled" id="save-password-btn">Update Password</button>
+            </div>
+          </form>
+
+          <div class="apple-group" style="margin-top: 16px;">
+            <div class="apple-group-header">SESSION & SECURITY</div>
+            <div class="apple-cell">
+              <div class="apple-cell-info">
+                <div class="apple-cell-title">Sign Out of Account</div>
+                <div class="apple-cell-sub">End this active session on this device</div>
+              </div>
+              <button type="button" class="apple-btn-secondary" onclick="Auth.handleLogout()">Sign Out</button>
+            </div>
+          </div>
+
+          <div class="apple-group danger-group" style="margin-top: 16px;">
+            <div class="apple-group-header danger-header">DANGER ZONE</div>
+            <div class="apple-cell">
+              <div class="apple-cell-info">
+                <div class="apple-cell-title danger-title">Delete Account</div>
+                <div class="apple-cell-sub">Permanently delete your profile, credentials, and purge all files from CommonThread cloud storage.</div>
+              </div>
+              <button type="button" class="apple-btn-danger" id="open-delete-account-btn" onclick="Settings.openDeleteModal()">Delete Account</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB: LEGAL, PRIVACY POLICY & TERMS -->
+        <div id="settings-tab-legal" class="settings-tab-pane">
+          <div class="legal-nav-segmented">
+            <button type="button" class="legal-seg-btn active" data-legal="privacy" onclick="Settings.switchLegalDoc('privacy')">Privacy Policy</button>
+            <button type="button" class="legal-seg-btn" data-legal="terms" onclick="Settings.switchLegalDoc('terms')">Terms of Service</button>
+          </div>
+
+          <!-- Privacy Policy Document -->
+          <div id="legal-doc-privacy" class="legal-doc-content active">
+            <div class="apple-group">
+              <div class="apple-group-header">APPLE-INSPIRED TRANSPARENT PRIVACY POLICY</div>
+              <div class="legal-prose">
+                <h4>1. Our Fundamental Privacy Commitment</h4>
+                <p>At Haul Pro, privacy is not an afterthought; it is our foundation. We believe that your digital content belongs exclusively to you. We do not track your internet browsing, sell your personal data to advertisers, or monetize your activity.</p>
+
+                <h4>2. Zero Third-Party Advertising Trackers</h4>
+                <p>We do not embed third-party tracking pixels, marketing beacons, or surveillance cookies. The only cookies we store are strictly essential, cryptographically signed HTTP-only session tokens (<code>auth_token</code>) required to keep you securely signed in.</p>
+
+                <h4>3. Full Ownership of Your Content</h4>
+                <p>You retain 100% intellectual property ownership of all images, videos, audio, documents, and code uploaded to your account. We never claim any license or ownership over your content.</p>
+
+                <h4>4. Robust Cloud Isolation & Encryption</h4>
+                <p>All data transmissions between your browser and our edge servers are protected with TLS 1.3 encryption. Private files are shielded with session authorization: unauthorized requests are rejected at the edge.</p>
+
+                <h4>5. Absolute Right to Permanent Deletion (GDPR & CCPA)</h4>
+                <p>You maintain complete control over your data. When you delete a file or empty your Trash, our system dispatches a purge command to our storage engine. When you delete your account, your user record, folders, metadata, and all stored media are permanently purged from all databases and storage nodes.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Terms of Service Document -->
+          <div id="legal-doc-terms" class="legal-doc-content" style="display: none;">
+            <div class="apple-group">
+              <div class="apple-group-header">TERMS OF SERVICE & ACCEPTABLE USE</div>
+              <div class="legal-prose">
+                <h4>1. Acceptance of Terms</h4>
+                <p>By registering for or using Haul Pro ("Shelfie"), you agree to abide by these Terms of Service. If you do not agree with any provision of these terms, you may terminate your account at any time.</p>
+
+                <h4>2. Permitted & Fair Use</h4>
+                <p>Haul Pro provides universal cloud media storage and content hosting for creators, developers, designers, and students. Standard free tier accounts receive up to 15 GB of high-speed cloud storage quota.</p>
+
+                <h4>3. Acceptable Use Policy</h4>
+                <p>You agree not to upload, store, or distribute:</p>
+                <ul>
+                  <li>Malicious code, computer viruses, trojans, ransomware, or spyware.</li>
+                  <li>Phishing pages or credentials-harvesting artifacts.</li>
+                  <li>Unlawful, non-consensual, or abusive material.</li>
+                  <li>Materials that violate intellectual property or copyright laws (DMCA).</li>
+                </ul>
+
+                <h4>4. Storage Engine Architecture & Service Level</h4>
+                <p>Haul Pro utilizes distributed cloud architecture to achieve high reliability. While we take extensive precautions to prevent loss, users are encouraged to maintain local backups of mission-critical materials.</p>
+
+                <h4>5. Account Termination</h4>
+                <p>We reserve the right to suspend accounts that systematically violate our acceptable use policy. You may voluntarily delete your account at any time via the Security settings panel.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DELETE ACCOUNT CONFIRMATION MODAL -->
+  <div id="delete-account-modal" class="modal-backdrop" style="display: none;">
+    <div class="modal-card apple-modal delete-account-card" style="max-width: 440px;">
+      <div class="modal-header apple-modal-header">
+        <div class="settings-header-left">
+          <span id="delete-modal-warn-icon" class="danger-icon-container"></span>
+          <h3 class="modal-title" style="color: #d93025;">Delete Account Permanently</h3>
+        </div>
+        <button type="button" class="icon-btn apple-close-btn" id="delete-acc-close-btn" onclick="Settings.closeDeleteModal()">
+          <span id="delete-acc-close-icon"></span>
+        </button>
+      </div>
+      <div class="modal-body" style="padding: 20px 24px;">
+        <p style="font-size: 14px; color: var(--text-secondary); line-height: 1.5; margin-bottom: 16px;">
+          Are you sure you want to delete your Haul Pro account? This action is <strong>permanent and irreversible</strong>. All your files, folders, and profile details will be immediately purged.
+        </p>
+        <form id="delete-account-confirm-form" onsubmit="Settings.handleDeleteAccountConfirm(event)">
+          <div class="apple-input-row" style="margin-bottom: 12px;">
+            <label style="font-size: 13px; font-weight: 500; margin-bottom: 6px; display: block;">Enter Your Password to Confirm</label>
+            <input type="password" id="delete-acc-password" placeholder="Account password" required style="width: 100%; padding: 10px 12px; border: 1px solid var(--border-color); border-radius: 8px; font-size: 14px;">
+          </div>
+          <div id="delete-acc-error" class="modal-error" style="display: none; margin-bottom: 12px;"></div>
+          <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
+            <button type="button" class="btn-text" onclick="Settings.closeDeleteModal()">Cancel</button>
+            <button type="submit" class="apple-btn-danger" id="confirm-delete-acc-btn">Permanently Delete</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MOBILE BOTTOM NAVIGATION (Apple iOS Style) -->
+  <nav id="mobile-tab-bar" class="mobile-tab-bar">
+    <button type="button" class="mobile-tab-item active" data-nav="drive" title="My Drive">
+      <span class="mobile-tab-icon" id="mob-nav-drive-icon"></span>
+      <span class="mobile-tab-label">Drive</span>
+    </button>
+    <button type="button" class="mobile-tab-item" data-nav="recent" title="Recent files">
+      <span class="mobile-tab-icon" id="mob-nav-recent-icon"></span>
+      <span class="mobile-tab-label">Recent</span>
+    </button>
+    <button type="button" class="mobile-fab-btn" id="mobile-fab-btn" title="Add files or create folders">
+      <span id="mob-fab-icon"></span>
+    </button>
+    <button type="button" class="mobile-tab-item" data-nav="starred" title="Starred">
+      <span class="mobile-tab-icon" id="mob-nav-starred-icon"></span>
+      <span class="mobile-tab-label">Starred</span>
+    </button>
+    <button type="button" class="mobile-tab-item" data-nav="trash" title="Trash">
+      <span class="mobile-tab-icon" id="mob-nav-trash-icon"></span>
+      <span class="mobile-tab-label">Trash</span>
+    </button>
+  </nav>
+
+  <!-- TOAST CONTAINER -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- SCRIPTS -->
+  <script src="/js/icons.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/auth.js"></script>
+  <script src="/js/viewer.js"></script>
+  <script src="/js/uploader.js"></script>
+  <script src="/js/settings.js"></script>
+  <script src="/js/drive.js"></script>
+
+  <!-- ICON INITIALIZER -->
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      // Inject SVGs into UI (Zero emojis)
+      document.getElementById('logo-icon-container').innerHTML = Icons.haul_logo;
+      document.getElementById('auth-logo-container').innerHTML = Icons.haul_logo;
+      document.getElementById('search-icon-container').innerHTML = Icons.search;
+      document.getElementById('filter-icon-container').innerHTML = Icons.filter;
+      document.getElementById('new-icon-container').innerHTML = Icons.plus;
+      document.getElementById('menu-folder-icon').innerHTML = Icons.folder;
+      document.getElementById('menu-upload-icon').innerHTML = Icons.file_generic;
+      document.getElementById('nav-drive-icon').innerHTML = Icons.folder;
+      document.getElementById('nav-recent-icon').innerHTML = Icons.info;
+      document.getElementById('nav-starred-icon').innerHTML = Icons.star;
+      document.getElementById('nav-trash-icon').innerHTML = Icons.trash;
+      document.getElementById('storage-icon-container').innerHTML = Icons.storage_drive;
+      document.getElementById('dropzone-icon-container').innerHTML = Icons.upload_cloud;
+      document.getElementById('drawer-close-icon').innerHTML = Icons.close;
+      document.getElementById('viewer-close-icon').innerHTML = Icons.close;
+      document.getElementById('viewer-download-icon').innerHTML = Icons.download;
+      document.getElementById('viewer-link-icon').innerHTML = Icons.link;
+      document.getElementById('toggle-view-btn').innerHTML = Icons.view_list;
+
+      const profileGlobe = document.getElementById('profile-globe-icon');
+      if (profileGlobe) profileGlobe.innerHTML = Icons.globe;
+      const profileLink = document.getElementById('profile-link-icon');
+      if (profileLink) profileLink.innerHTML = Icons.link;
+      const profileEdit = document.getElementById('profile-edit-icon');
+      if (profileEdit) profileEdit.innerHTML = Icons.edit;
+      const bannerEdit = document.getElementById('banner-edit-icon');
+      if (bannerEdit) bannerEdit.innerHTML = Icons.edit;
+      const instaCamera = document.getElementById('insta-camera-icon');
+      if (instaCamera) instaCamera.innerHTML = Icons.camera;
+      const editCamera = document.getElementById('edit-camera-icon');
+      if (editCamera) editCamera.innerHTML = Icons.camera;
+      const editClose = document.getElementById('edit-profile-close-icon');
+      if (editClose) editClose.innerHTML = Icons.close;
+      const tabPrivate = document.getElementById('tab-private-icon');
+      if (tabPrivate) tabPrivate.innerHTML = Icons.lock;
+      const tabPublic = document.getElementById('tab-public-icon');
+      if (tabPublic) tabPublic.innerHTML = Icons.globe;
+      const shareIconHolder = document.getElementById('profile-share-icon-holder');
+      if (shareIconHolder) shareIconHolder.innerHTML = Icons.link;
+      const ownerBarIcon = document.getElementById('owner-bar-icon');
+      if (ownerBarIcon) ownerBarIcon.innerHTML = Icons.info;
+      const moveCloseIcon = document.getElementById('move-modal-close-icon');
+      if (moveCloseIcon) moveCloseIcon.innerHTML = Icons.close;
+
+      const shareFolderClose = document.getElementById('share-folder-close-icon');
+      if (shareFolderClose) shareFolderClose.innerHTML = Icons.close;
+      const multiClose = document.getElementById('multi-select-close-icon');
+      if (multiClose) multiClose.innerHTML = Icons.close;
+      const multiGlobe = document.getElementById('multi-globe-icon');
+      if (multiGlobe) multiGlobe.innerHTML = Icons.globe;
+      const multiLock = document.getElementById('multi-lock-icon');
+      if (multiLock) multiLock.innerHTML = Icons.lock;
+      const multiMove = document.getElementById('multi-move-icon');
+      if (multiMove) multiMove.innerHTML = Icons.move;
+      const multiTrash = document.getElementById('multi-trash-icon');
+      if (multiTrash) multiTrash.innerHTML = Icons.trash;
+
+      // Settings & Mobile Navigation Icons
+      const mobMenu = document.getElementById('mobile-menu-icon');
+      if (mobMenu) mobMenu.innerHTML = Icons.menu;
+      const topSettings = document.getElementById('topbar-settings-icon');
+      if (topSettings) topSettings.innerHTML = Icons.settings;
+      const profSettings = document.getElementById('profile-settings-icon');
+      if (profSettings) profSettings.innerHTML = Icons.settings;
+      const setModalIcon = document.getElementById('settings-modal-icon');
+      if (setModalIcon) setModalIcon.innerHTML = Icons.settings;
+      const setCloseIcon = document.getElementById('settings-close-icon');
+      if (setCloseIcon) setCloseIcon.innerHTML = Icons.close;
+
+      const setNavGen = document.getElementById('settings-nav-general-icon');
+      if (setNavGen) setNavGen.innerHTML = Icons.sliders;
+      const setNavGuide = document.getElementById('settings-nav-guide-icon');
+      if (setNavGuide) setNavGuide.innerHTML = Icons.book_open;
+      const setNavHelp = document.getElementById('settings-nav-help-icon');
+      if (setNavHelp) setNavHelp.innerHTML = Icons.help;
+      const setNavStor = document.getElementById('settings-nav-storage-icon');
+      if (setNavStor) setNavStor.innerHTML = Icons.storage_drive;
+      const setNavSec = document.getElementById('settings-nav-security-icon');
+      if (setNavSec) setNavSec.innerHTML = Icons.shield;
+      const setNavLegal = document.getElementById('settings-nav-legal-icon');
+      if (setNavLegal) setNavLegal.innerHTML = Icons.file_text;
+
+      // Topbar alerts and Sidebar activity
+      const topAlerts = document.getElementById('topbar-alerts-icon');
+      if (topAlerts) topAlerts.innerHTML = Icons.bell;
+      const navAct = document.getElementById('nav-activity-icon');
+      if (navAct) navAct.innerHTML = Icons.activity;
+
+      // Sidebar Quick Links Icons
+      const sideGuide = document.getElementById('sidebar-guide-icon');
+      if (sideGuide) sideGuide.innerHTML = Icons.book_open;
+      const sideSet = document.getElementById('sidebar-settings-icon');
+      if (sideSet) sideSet.innerHTML = Icons.settings;
+      const sideLogout = document.getElementById('sidebar-logout-icon');
+      if (sideLogout) sideLogout.innerHTML = Icons.logout;
+
+      // Guide Step Icons
+      const g1 = document.getElementById('guide-step1-icon');
+      if (g1) g1.innerHTML = Icons.upload_cloud;
+      const g2 = document.getElementById('guide-step2-icon');
+      if (g2) g2.innerHTML = Icons.folder;
+      const g3 = document.getElementById('guide-step3-icon');
+      if (g3) g3.innerHTML = Icons.lock;
+      const g4 = document.getElementById('guide-step4-icon');
+      if (g4) g4.innerHTML = Icons.user;
+      const g5 = document.getElementById('guide-step5-icon');
+      if (g5) g5.innerHTML = Icons.link;
+
+      // Delete Modal Icons
+      const delWarn = document.getElementById('delete-modal-warn-icon');
+      if (delWarn) delWarn.innerHTML = Icons.alert_triangle;
+      const delClose = document.getElementById('delete-acc-close-icon');
+      if (delClose) delClose.innerHTML = Icons.close;
+
+      // FAQ chevrons
+      document.querySelectorAll('.faq-chevron').forEach(el => {
+        el.innerHTML = Icons.chevron_down;
+      });
+
+      const mobDrive = document.getElementById('mob-nav-drive-icon');
+      if (mobDrive) mobDrive.innerHTML = Icons.folder;
+      const mobRecent = document.getElementById('mob-nav-recent-icon');
+      if (mobRecent) mobRecent.innerHTML = Icons.info;
+      const mobFab = document.getElementById('mob-fab-icon');
+      if (mobFab) mobFab.innerHTML = Icons.plus;
+      const mobStarred = document.getElementById('mob-nav-starred-icon');
+      if (mobStarred) mobStarred.innerHTML = Icons.star;
+      const mobTrash = document.getElementById('mob-nav-trash-icon');
+      if (mobTrash) mobTrash.innerHTML = Icons.trash;
+
+      const menuUrlIcon = document.getElementById('menu-url-icon');
+      if (menuUrlIcon) menuUrlIcon.innerHTML = Icons.link;
+      const urlUploadClose = document.getElementById('url-upload-close-icon');
+      if (urlUploadClose) urlUploadClose.innerHTML = Icons.close;
+
+      // Start controllers
+      API.initConfig();
+      Auth.init();
+      Viewer.init();
+      Uploader.init();
+      Settings.init();
+    });
+  </script>
+</body>
+</html>
