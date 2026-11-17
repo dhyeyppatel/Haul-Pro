@@ -5,9 +5,20 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Haul Pro - Cloud Storage & Media Platform</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'><defs><linearGradient id='g' x1='4' y1='4' x2='36' y2='36' gradientUnits='userSpaceOnUse'><stop offset='0%25' stop-color='%231a73e8'/><stop offset='100%25' stop-color='%230d47a1'/></linearGradient></defs><rect x='3' y='3' width='34' height='34' rx='10' fill='url(%23g)'/><path d='M12 11V29M28 11V29M12 20H28' stroke='white' stroke-width='3.5' stroke-linecap='round'/><circle cx='20' cy='13.5' r='2.2' fill='%2300e5ff'/></svg>">
-  <link rel="stylesheet" href="/css/drive.css">
-  <link rel="stylesheet" href="/css/viewer.css">
-  <link rel="stylesheet" href="/css/auth.css">
+  <link rel="stylesheet" href="/css/drive.css?v=2.1">
+  <link rel="stylesheet" href="/css/viewer.css?v=2.1">
+  <link rel="stylesheet" href="/css/auth.css?v=2.1">
+  <script>
+    (function() {
+      try {
+        var t = localStorage.getItem('haul_theme') || 'system';
+        if (t === 'system') {
+          t = (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
+        }
+        document.documentElement.setAttribute('data-theme', t);
+      } catch(e) {}
+    })();
+  </script>
 </head>
 <body>
 
@@ -37,7 +48,7 @@
   <!-- TOPBAR -->
   <header class="topbar">
     <div class="topbar-left">
-      <button id="mobile-menu-btn" class="icon-btn mobile-menu-btn" title="Open navigation">
+      <button id="sidebar-toggle-btn" class="icon-btn sidebar-toggle-btn" title="Toggle navigation">
         <span id="mobile-menu-icon"></span>
       </button>
       <a href="/" class="brand-logo">
@@ -636,6 +647,17 @@
             <div class="apple-group-header">PREFERENCES</div>
             <div class="apple-cell">
               <div class="apple-cell-info">
+                <div class="apple-cell-title" data-i18n="theme">Theme</div>
+                <div class="apple-cell-sub" data-i18n="theme_sub">Select Light, Dark, or sync with System preference</div>
+              </div>
+              <div class="apple-segmented-control" id="pref-theme-segmented">
+                <button type="button" class="apple-segmented-btn active" data-value="system">System</button>
+                <button type="button" class="apple-segmented-btn" data-value="light">Light</button>
+                <button type="button" class="apple-segmented-btn" data-value="dark">Dark</button>
+              </div>
+            </div>
+            <div class="apple-cell">
+              <div class="apple-cell-info">
                 <div class="apple-cell-title" data-i18n="default_layout">Default Layout</div>
                 <div class="apple-cell-sub" data-i18n="default_layout_sub">Choose how your files are displayed by default</div>
               </div>
@@ -1010,13 +1032,13 @@
   <div id="toast-container" class="toast-container"></div>
 
   <!-- SCRIPTS -->
-  <script src="/js/icons.js"></script>
-  <script src="/js/api.js"></script>
-  <script src="/js/auth.js"></script>
-  <script src="/js/viewer.js"></script>
-  <script src="/js/uploader.js"></script>
-  <script src="/js/settings.js"></script>
-  <script src="/js/drive.js"></script>
+  <script src="/js/icons.js?v=2.1"></script>
+  <script src="/js/api.js?v=2.1"></script>
+  <script src="/js/auth.js?v=2.1"></script>
+  <script src="/js/viewer.js?v=2.1"></script>
+  <script src="/js/uploader.js?v=2.1"></script>
+  <script src="/js/settings.js?v=2.1"></script>
+  <script src="/js/drive.js?v=2.1"></script>
 
   <!-- ICON INITIALIZER -->
   <script>

@@ -76,6 +76,12 @@ const Drive = {
       this.currentView = Settings.preferences.defaultView;
     }
 
+    try {
+      if (window.innerWidth > 768 && localStorage.getItem('haul_sidebar_collapsed') === 'true') {
+        document.body.classList.add('sidebar-collapsed');
+      }
+    } catch (e) {}
+
     if (!this.eventsBound) {
       this.bindEvents();
       this.bindModalEvents();
@@ -93,8 +99,8 @@ const Drive = {
       });
     });
 
-    // Mobile Drawer Toggle & Backdrop
-    const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+    // Sidebar Toggle Button (Desktop Rail Mode & Mobile Drawer)
+    const sidebarToggleBtn = document.getElementById('sidebar-toggle-btn') || document.getElementById('mobile-menu-btn');
     const sidebar = document.getElementById('app-sidebar');
     const backdrop = document.getElementById('sidebar-backdrop');
 
@@ -103,10 +109,18 @@ const Drive = {
       if (backdrop) backdrop.classList.remove('active');
     };
 
-    if (mobileMenuBtn && sidebar) {
-      mobileMenuBtn.addEventListener('click', () => {
-        sidebar.classList.toggle('open');
-        if (backdrop) backdrop.classList.toggle('active', sidebar.classList.contains('open'));
+    if (sidebarToggleBtn && sidebar) {
+      sidebarToggleBtn.addEventListener('click', () => {
+        if (window.innerWidth > 768) {
+          document.body.classList.toggle('sidebar-collapsed');
+          const isCollapsed = document.body.classList.contains('sidebar-collapsed');
+          try {
+            localStorage.setItem('haul_sidebar_collapsed', isCollapsed ? 'true' : 'false');
+          } catch (e) {}
+        } else {
+          sidebar.classList.toggle('open');
+          if (backdrop) backdrop.classList.toggle('active', sidebar.classList.contains('open'));
+        }
       });
     }
 

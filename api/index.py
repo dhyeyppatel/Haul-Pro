@@ -104,6 +104,13 @@ def authenticate():
     except Exception:
         return None
 
+def user_id_match(uid):
+    try:
+        obj_id = ObjectId(uid) if isinstance(uid, str) else uid
+        return {"$in": [obj_id, str(obj_id)]}
+    except Exception:
+        return uid
+
 def detect_category(extension, mime_type=""):
     ext = (extension or "").lower().lstrip(".")
     mime = (mime_type or "").lower()
@@ -310,6 +317,21 @@ def get_me():
         username = re.sub(r'[^a-z0-9_-]', '', user["email"].split("@")[0].lower()) or "user"
         database.users.update_one({"_id": user["_id"]}, {"$set": {"username": username}})
 
+    # Recalculate true active storage consumption
+    storage_used = int(user.get("storage_used_bytes", 0) or 0)
+    try:
+        pipeline = [
+            {"$match": {"user_id": user_id_match(user["_id"]), "is_trashed": False}},
+            {"$group": {"_id": None, "total": {"$sum": "$size"}}}
+        ]
+        agg = list(database.files.aggregate(pipeline))
+        if agg and "total" in agg[0]:
+            storage_used = int(agg[0]["total"])
+            if storage_used != user.get("storage_used_bytes"):
+                database.users.update_one({"_id": user["_id"]}, {"$set": {"storage_used_bytes": storage_used}})
+    except Exception:
+        pass
+
     return jsonify({
         "success": True,
         "user": {
@@ -320,7 +342,7 @@ def get_me():
             "bio": user.get("bio", ""),
             "avatar_url": user.get("avatar_url", ""),
             "avatar_color": user.get("avatar_color", "#1a73e8"),
-            "storage_used_bytes": user.get("storage_used_bytes", 0),
+            "storage_used_bytes": storage_used,
             "storage_limit_bytes": user.get("storage_limit_bytes", 15 * 1024 * 1024 * 1024)
         }
     })
@@ -506,8 +528,9 @@ def delete_account():
                 pass
 
     # Delete all database records for this user
-    database.files.delete_many({"user_id": user_id})
-    database.folders.delete_many({"user_id": user_id})
+    database.files.delete_many({"user_id": user_id_match(user_id)})
+    database.folders.delete_many({"user_id": user_id_match(user_id)})
+    database.activities.delete_many({"user_id": user_id_match(user_id)})
     database.users.delete_one({"_id": user_id})
 
     # Clear auth cookie
@@ -516,14 +539,15 @@ def delete_account():
     return resp
 
 @app.route("/api/user/storage-stats", methods=["GET"])
+@app.route("/api/storage/info", methods=["GET"])
 def get_storage_stats():
     auth_user = authenticate()
     if not auth_user:
         return jsonify({"success": False, "error": "Unauthorized"}), 401
 
     database = get_db()
-    user_id = auth_user["id"]
-    files = list(database.files.find({"user_id": user_id}))
+    uid = ObjectId(auth_user["id"])
+    files = list(database.files.find({"user_id": user_id_match(uid)}))
 
     breakdown = {"image": 0, "video": 0, "audio": 0, "document": 0, "archive": 0, "code": 0, "other": 0}
     trashed_bytes = 0
@@ -531,7 +555,7 @@ def get_storage_stats():
     total_active_bytes = 0
 
     for f in files:
-        sz = f.get("size", 0)
+        sz = int(f.get("size", 0) or 0)
         if f.get("is_trashed"):
             trashed_bytes += sz
             trashed_count += 1
@@ -543,8 +567,8 @@ def get_storage_stats():
             else:
                 breakdown["other"] += sz
 
-    database.users.update_one({"_id": ObjectId(user_id)}, {"$set": {"storage_used_bytes": total_active_bytes}})
-    user = database.users.find_one({"_id": ObjectId(user_id)})
+    database.users.update_one({"_id": uid}, {"$set": {"storage_used_bytes": total_active_bytes}})
+    user = database.users.find_one({"_id": uid}) or {}
 
     return jsonify({
         "success": True,
@@ -562,8 +586,8 @@ def empty_trash():
         return jsonify({"success": False, "error": "Unauthorized"}), 401
 
     database = get_db()
-    user_id = auth_user["id"]
-    trashed_files = list(database.files.find({"user_id": user_id, "is_trashed": True}))
+    uid = ObjectId(auth_user["id"])
+    trashed_files = list(database.files.find({"user_id": user_id_match(uid), "is_trashed": True}))
 
     for f in trashed_files:
         if f.get("delete_token"):
@@ -572,14 +596,14 @@ def empty_trash():
             except Exception:
                 pass
 
-    database.files.delete_many({"user_id": user_id, "is_trashed": True})
+    database.files.delete_many({"user_id": user_id_match(uid), "is_trashed": True})
 
     # Recalculate storage used
-    active_files = list(database.files.find({"user_id": user_id}))
-    new_used = sum(f.get("size", 0) for f in active_files)
-    database.users.update_one({"_id": ObjectId(user_id)}, {"$set": {"storage_used_bytes": new_used}})
+    active_files = list(database.files.find({"user_id": user_id_match(uid), "is_trashed": False}))
+    new_used = sum(int(f.get("size", 0) or 0) for f in active_files)
+    database.users.update_one({"_id": uid}, {"$set": {"storage_used_bytes": new_used}})
 
-    record_activity(user_id, "empty_trash", "Trash", f"Emptied trash ({len(trashed_files)} item(s) permanently removed)", "system")
+    record_activity(uid, "empty_trash", "Trash", f"Emptied trash ({len(trashed_files)} item(s) permanently removed)", "system")
 
     return jsonify({"success": True, "deleted_count": len(trashed_files), "new_storage_used": new_used})
 

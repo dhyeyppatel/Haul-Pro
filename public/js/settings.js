@@ -6,7 +6,8 @@ const Settings = {
     defaultView: 'grid',
     defaultVisibility: 'private',
     autoCopy: true,
-    language: 'en'
+    language: 'en',
+    theme: 'system'
   },
   currentTab: 'general',
 
@@ -159,6 +160,7 @@ const Settings = {
 
   init() {
     this.loadLocalPreferences();
+    this.initThemeListener();
     this.bindEvents();
   },
 
@@ -168,11 +170,43 @@ const Settings = {
       if (saved) {
         this.preferences = Object.assign(this.preferences, JSON.parse(saved));
       }
+      const explicitTheme = localStorage.getItem('haul_theme');
+      if (explicitTheme) {
+        this.preferences.theme = explicitTheme;
+      }
     } catch (e) {
       // Ignore storage errors
     }
+    this.applyTheme(this.preferences.theme || 'system');
     this.applyPreferencesUI();
     this.applyLanguage(this.preferences.language || 'en');
+  },
+
+  applyTheme(theme) {
+    const t = theme || this.preferences.theme || 'system';
+    let resolved = t;
+    if (t === 'system') {
+      resolved = (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
+    }
+    document.documentElement.setAttribute('data-theme', resolved);
+    try {
+      localStorage.setItem('haul_theme', t);
+    } catch (e) {}
+  },
+
+  initThemeListener() {
+    if (!window.matchMedia) return;
+    const media = window.matchMedia('(prefers-color-scheme: dark)');
+    const handler = (e) => {
+      if ((this.preferences.theme || 'system') === 'system') {
+        document.documentElement.setAttribute('data-theme', e.matches ? 'dark' : 'light');
+      }
+    };
+    if (media.addEventListener) {
+      media.addEventListener('change', handler);
+    } else if (media.addListener) {
+      media.addListener(handler);
+    }
   },
 
   savePreferences(updates) {
@@ -206,6 +240,12 @@ const Settings = {
     if (autoCopyInput) {
       autoCopyInput.checked = Boolean(this.preferences.autoCopy);
     }
+
+    // Theme segmented control
+    const themeBtns = document.querySelectorAll('#pref-theme-segmented .apple-segmented-btn');
+    themeBtns.forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.value === (this.preferences.theme || 'system'));
+    });
 
     // Language dropdown
     const langSelect = document.getElementById('pref-language-select');
@@ -289,6 +329,15 @@ const Settings = {
         Drive.showToast(`Auto-copy link ${e.target.checked ? 'enabled' : 'disabled'}`);
       });
     }
+
+    document.querySelectorAll('#pref-theme-segmented .apple-segmented-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const val = btn.dataset.value;
+        this.savePreferences({ theme: val });
+        this.applyTheme(val);
+        Drive.showToast(`Theme set to ${val.charAt(0).toUpperCase() + val.slice(1)}`);
+      });
+    });
 
     const langSelect = document.getElementById('pref-language-select');
     if (langSelect) {
@@ -470,6 +519,11 @@ const Settings = {
       setLeg('leg-doc-size', docBytes);
       setLeg('leg-audio-size', audBytes);
       setLeg('leg-other-size', othBytes);
+
+      // Update sidebar storage meter in sync
+      if (typeof Auth !== 'undefined' && Auth.updateStorageMeter) {
+        Auth.updateStorageMeter(usedBytes, limitBytes);
+      }
 
       // Update trash info
       const trashInfo = document.getElementById('settings-trash-info');

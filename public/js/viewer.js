@@ -94,8 +94,8 @@ const Viewer = {
     const isOffice = ['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'odt', 'ods', 'odp', 'rtf'].includes(ext);
     const isMarkdown = ['md', 'markdown', 'mdown'].includes(ext);
     const isCsv = ['csv', 'tsv'].includes(ext);
-    const isCode = ['js', 'jsx', 'ts', 'tsx', 'html', 'htm', 'css', 'scss', 'json', 'py', 'java', 'c', 'cpp', 'h', 'hpp', 'cs', 'go', 'rs', 'php', 'sh', 'bash', 'bat', 'cmd', 'ps1', 'sql', 'xml', 'yaml', 'yml', 'toml'].includes(ext);
-    const isPlainText = ['txt', 'log', 'env', 'ini', 'conf', 'cfg', 'reg'].includes(ext);
+    const isCode = file.category === 'code' || ['js', 'jsx', 'ts', 'tsx', 'html', 'htm', 'css', 'scss', 'json', 'json5', 'jsonc', 'py', 'pyw', 'java', 'c', 'cpp', 'cc', 'cxx', 'h', 'hpp', 'cs', 'go', 'rs', 'php', 'rb', 'lua', 'swift', 'kt', 'kts', 'dart', 'scala', 'r', 'pl', 'pm', 'sh', 'bash', 'zsh', 'fish', 'bat', 'cmd', 'ps1', 'psm1', 'vbs', 'sql', 'xml', 'yaml', 'yml', 'toml', 'dockerfile', 'makefile', 'graphql', 'vue', 'svelte'].includes(ext);
+    const isPlainText = ['txt', 'log', 'out', 'err', 'diff', 'patch', 'env', 'ini', 'conf', 'cfg', 'reg', 'properties', 'gitignore', 'gitattributes', 'editorconfig'].includes(ext);
     const isVideo = file.category === 'video' || ['mp4', 'webm', 'mkv', 'mov', 'avi', 'flv', 'wmv'].includes(ext);
     const isAudio = file.category === 'audio' || ['mp3', 'wav', 'ogg', 'm4a', 'flac', 'aac', 'opus'].includes(ext);
 
@@ -510,24 +510,93 @@ const Viewer = {
   },
 
   colorizeCode(text, ext) {
-    let esc = this.escapeHtml(text);
+    if (!text) return '';
+    const pythonKeywords = new Set([
+      'def', 'class', 'import', 'from', 'as', 'return', 'if', 'elif', 'else', 'while',
+      'for', 'in', 'try', 'except', 'finally', 'raise', 'with', 'pass', 'lambda', 'yield',
+      'self', 'cls', 'True', 'False', 'None', 'async', 'await', 'global', 'nonlocal', 'assert', 'break', 'continue', 'del', 'is', 'not', 'and', 'or'
+    ]);
+    const generalKeywords = new Set([
+      'const', 'let', 'var', 'function', 'return', 'if', 'else', 'import', 'export', 'from',
+      'as', 'class', 'default', 'async', 'await', 'public', 'private', 'protected', 'static',
+      'void', 'true', 'false', 'null', 'undefined', 'try', 'catch', 'finally', 'while', 'for',
+      'in', 'of', 'switch', 'case', 'new', 'this', 'super', 'interface', 'type', 'extends', 'implements',
+      'struct', 'enum', 'package', 'func', 'mut', 'impl', 'trait', 'val', 'when'
+    ]);
+    const isPy = ext === 'py' || ext === 'python';
+    const kwSet = isPy ? pythonKeywords : generalKeywords;
 
-    // Simple robust tokenizer for syntax highlights
-    // 1. Strings
-    esc = esc.replace(/(&quot;[\s\S]*?&quot;|&#39;[\s\S]*?&#39;|`[\s\S]*?`)/g, '<span class="tok-str">$1</span>');
+    const lines = text.split('\n');
+    const processedLines = lines.map(line => {
+      let result = '';
+      let i = 0;
+      const len = line.length;
 
-    // 2. Comments
-    esc = esc.replace(/(\/\/[^\n]*|\/\*[\s\S]*?\*\/|#[^\n]*)/g, '<span class="tok-com">$1</span>');
+      while (i < len) {
+        // Comments & docstrings
+        if ((isPy && (line.startsWith('"""', i) || line.startsWith("'''", i))) ||
+            line.startsWith('//', i) || (isPy && line[i] === '#') ||
+            (!isPy && line[i] === '#' && ['sh', 'bash', 'zsh', 'yaml', 'yml', 'toml', 'ini', 'conf'].includes(ext))) {
+          result += `<span class="tok-com">${this.escapeHtml(line.slice(i))}</span>`;
+          break;
+        }
 
-    // 3. Keywords
-    const keywords = ['const', 'let', 'var', 'function', 'return', 'if', 'else', 'import', 'export', 'from', 'as', 'class', 'default', 'async', 'await', 'def', 'class', 'self', 'lambda', 'public', 'private', 'static', 'void', 'true', 'false', 'null', 'None', 'try', 'except', 'catch', 'finally', 'while', 'for', 'in', 'switch', 'case'];
-    const kwRegex = new RegExp(`\\b(${keywords.join('|')})\\b`, 'g');
-    esc = esc.replace(kwRegex, '<span class="tok-kw">$1</span>');
+        // Strings: single, double, backtick
+        const ch = line[i];
+        if (ch === '"' || ch === "'" || ch === '`') {
+          let strEnd = i + 1;
+          while (strEnd < len) {
+            if (line[strEnd] === '\\') {
+              strEnd += 2;
+              continue;
+            }
+            if (line[strEnd] === ch) {
+              strEnd++;
+              break;
+            }
+            strEnd++;
+          }
+          result += `<span class="tok-str">${this.escapeHtml(line.slice(i, strEnd))}</span>`;
+          i = strEnd;
+          continue;
+        }
 
-    // 4. Numbers
-    esc = esc.replace(/\b(\d+(\.\d+)?)\b/g, '<span class="tok-num">$1</span>');
+        // Identifiers & Keywords
+        if (/[a-zA-Z_$]/.test(ch)) {
+          let idEnd = i + 1;
+          while (idEnd < len && /[a-zA-Z0-9_$]/.test(line[idEnd])) {
+            idEnd++;
+          }
+          const word = line.slice(i, idEnd);
+          if (kwSet.has(word)) {
+            result += `<span class="tok-kw">${this.escapeHtml(word)}</span>`;
+          } else if (idEnd < len && line.slice(idEnd).trimStart().startsWith('(')) {
+            result += `<span class="tok-fn">${this.escapeHtml(word)}</span>`;
+          } else {
+            result += this.escapeHtml(word);
+          }
+          i = idEnd;
+          continue;
+        }
 
-    return esc;
+        // Numbers
+        if (/\d/.test(ch) && (i === 0 || !/[a-zA-Z0-9_$]/.test(line[i - 1]))) {
+          let numEnd = i + 1;
+          while (numEnd < len && /[\d.xXa-fA-F_]/.test(line[numEnd])) {
+            numEnd++;
+          }
+          result += `<span class="tok-num">${this.escapeHtml(line.slice(i, numEnd))}</span>`;
+          i = numEnd;
+          continue;
+        }
+
+        result += this.escapeHtml(ch);
+        i++;
+      }
+      return result;
+    });
+
+    return processedLines.join('\n');
   },
 
   // ==========================================
