@@ -20,6 +20,8 @@ const Settings = {
       guide: "Guide & Help",
       settings: "Settings",
       signout: "Sign Out",
+      activity: "Activity",
+      activity_log: "Activity & Alerts",
       general: "General",
       security: "Security",
       legal: "Legal",
@@ -42,6 +44,8 @@ const Settings = {
       guide: "Guía y Ayuda",
       settings: "Ajustes",
       signout: "Cerrar Sesión",
+      activity: "Actividad",
+      activity_log: "Actividad y Alertas",
       general: "General",
       security: "Seguridad",
       legal: "Legal",
@@ -64,6 +68,8 @@ const Settings = {
       guide: "Guide et Aide",
       settings: "Paramètres",
       signout: "Déconnexion",
+      activity: "Activité",
+      activity_log: "Activité et Alertes",
       general: "Général",
       security: "Sécurité",
       legal: "Légal",
@@ -86,6 +92,8 @@ const Settings = {
       guide: "Anleitung & Hilfe",
       settings: "Einstellungen",
       signout: "Abmelden",
+      activity: "Aktivität",
+      activity_log: "Aktivität & Benachrichtigungen",
       general: "Allgemein",
       security: "Sicherheit",
       legal: "Rechtliches",
@@ -108,6 +116,8 @@ const Settings = {
       guide: "गाइड और सहायता",
       settings: "सेटिंग्स",
       signout: "लॉग आउट",
+      activity: "गतिविधि",
+      activity_log: "गतिविधि व अलर्ट",
       general: "सामान्य",
       security: "सुरक्षा",
       legal: "नियम व शर्तें",
@@ -130,6 +140,8 @@ const Settings = {
       guide: "ガイドとヘルプ",
       settings: "設定",
       signout: "ログアウト",
+      activity: "アクティビティ",
+      activity_log: "アクティビティと通知",
       general: "一般",
       security: "セキュリティ",
       legal: "利用規約",
@@ -300,29 +312,6 @@ const Settings = {
       emptyTrashBtn.addEventListener('click', () => this.handleEmptyTrash());
     }
 
-    // Developer copy buttons
-    const copyApiKeyBtn = document.getElementById('copy-api-key-btn');
-    if (copyApiKeyBtn) {
-      copyApiKeyBtn.addEventListener('click', () => {
-        const keyEl = document.getElementById('dev-api-key');
-        if (keyEl) {
-          navigator.clipboard.writeText(keyEl.textContent.trim()).then(() => {
-            Drive.showToast('Developer API key copied to clipboard!');
-          });
-        }
-      });
-    }
-
-    const copySharexBtn = document.getElementById('copy-sharex-url-btn');
-    if (copySharexBtn) {
-      copySharexBtn.addEventListener('click', () => {
-        const url = `${window.location.origin}/api/1/upload`;
-        navigator.clipboard.writeText(url).then(() => {
-          Drive.showToast('ShareX endpoint URL copied to clipboard!');
-        });
-      });
-    }
-
     // FAQ Accordion clicks
     document.querySelectorAll('.faq-question').forEach(btn => {
       btn.addEventListener('click', () => {
@@ -491,17 +480,6 @@ const Settings = {
           ? `${trashCount} item${trashCount === 1 ? '' : 's'} (${Auth.formatBytes(trashBytes)}) in trash ready to be purged.`
           : 'Trash is empty. No storage to reclaim.';
       }
-
-      // Update API Key & Media Server URL if returned
-      if (data.api_key) {
-        const keyEl = document.getElementById('dev-api-key');
-        if (keyEl) keyEl.textContent = data.api_key;
-      }
-      if (data.media_host_url) {
-        const srvEl = document.getElementById('dev-server-url');
-        if (srvEl) srvEl.textContent = data.media_host_url;
-      }
-
     } catch (e) {
       console.error('Failed to load storage stats:', e);
     }

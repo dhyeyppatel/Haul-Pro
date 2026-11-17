@@ -56,6 +56,10 @@
 
     <div class="topbar-right">
       <button id="topbar-signin-btn" class="topbar-signin-btn" style="display: none;">Sign in</button>
+      <button id="topbar-alerts-btn" class="icon-btn topbar-alerts-btn" title="Recent Activity & Alerts" onclick="Drive.switchNav('activity')">
+        <span id="topbar-alerts-icon"></span>
+        <span id="topbar-alerts-badge" class="alert-pulse-dot" style="display: none;"></span>
+      </button>
       <button id="topbar-settings-btn" class="icon-btn topbar-settings-btn" title="Settings">
         <span id="topbar-settings-icon"></span>
       </button>
@@ -150,6 +154,10 @@
         <li class="nav-item" data-nav="recent">
           <span id="nav-recent-icon"></span>
           <span>Recent</span>
+        </li>
+        <li class="nav-item" data-nav="activity">
+          <span id="nav-activity-icon"></span>
+          <span data-i18n="activity">Activity</span>
         </li>
         <li class="nav-item" data-nav="starred">
           <span id="nav-starred-icon"></span>
@@ -289,6 +297,20 @@
         <!-- Files Section -->
         <div class="section-label" id="files-section-label" style="display: none;">Files</div>
         <div id="files-container"></div>
+
+        <!-- Activity & Alerts Feed View -->
+        <div id="activity-view" class="activity-view" style="display: none;">
+          <div class="activity-header">
+            <div class="activity-header-left">
+              <h3 class="activity-headline" data-i18n="activity_log">Activity & Alerts</h3>
+              <p class="activity-subheadline">Real-time log of your file uploads, sharing, visibility changes, and deletions</p>
+            </div>
+            <button type="button" class="btn-text activity-clear-btn" id="activity-clear-btn" onclick="Drive.clearActivities()">
+              Clear Activity
+            </button>
+          </div>
+          <div id="activity-list" class="activity-list"></div>
+        </div>
 
         <!-- Infinite Scroll Loading Indicator -->
         <div id="infinite-loader" class="infinite-loader hidden">
@@ -571,10 +593,6 @@
           <span id="settings-nav-security-icon"></span>
           <span data-i18n="security">Security</span>
         </button>
-        <button type="button" class="settings-nav-item" data-tab="developer">
-          <span id="settings-nav-dev-icon"></span>
-          <span>API</span>
-        </button>
         <button type="button" class="settings-nav-item" data-tab="legal">
           <span id="settings-nav-legal-icon"></span>
           <span data-i18n="legal">Legal</span>
@@ -741,11 +759,11 @@
 
               <div class="faq-item">
                 <button type="button" class="faq-question">
-                  <span>Can I use Haul Pro with desktop tools like ShareX?</span>
+                  <span>Can I access and manage my files on mobile devices?</span>
                   <span class="faq-chevron"></span>
                 </button>
                 <div class="faq-answer">
-                  <p>Yes! Navigate to the <strong>Developer API</strong> tab in Settings to copy your personal API key and the standard drop-in <code>/api/1/upload</code> endpoint for ShareX, cURL, or custom upload scripts.</p>
+                  <p>Yes! Haul Pro is fully optimized for mobile devices with an Apple-style bottom tab bar, single-tap folder navigation, fast touch uploads, and full public profile showcase capabilities.</p>
                 </div>
               </div>
             </div>
@@ -834,40 +852,6 @@
                 <div class="apple-cell-sub">Permanently delete your profile, credentials, and purge all files from CommonThread cloud storage.</div>
               </div>
               <button type="button" class="apple-btn-danger" id="open-delete-account-btn" onclick="Settings.openDeleteModal()">Delete Account</button>
-            </div>
-          </div>
-        </div>
-
-        <!-- TAB 4: DEVELOPER API -->
-        <div id="settings-tab-developer" class="settings-tab-pane">
-          <div class="apple-group">
-            <div class="apple-group-header">STORAGE ENGINE INTEGRATION</div>
-            <div class="apple-cell">
-              <div class="apple-cell-info">
-                <div class="apple-cell-title">Engine Architecture</div>
-                <div class="apple-cell-sub">CommonThread Hybrid Telegram Cloud + Cloudflare R2 Worker Edge</div>
-              </div>
-              <span class="apple-badge-active">Online</span>
-            </div>
-            <div class="apple-cell">
-              <div class="apple-cell-info">
-                <div class="apple-cell-title">Media Storage URL</div>
-                <div class="apple-cell-code" id="dev-server-url">https://media-hosting.dhyeyp254.workers.dev</div>
-              </div>
-            </div>
-            <div class="apple-cell">
-              <div class="apple-cell-info">
-                <div class="apple-cell-title">Developer API Key</div>
-                <div class="apple-cell-code" id="dev-api-key">ct_dev_bbd2ae65abc5464d7965effceccf4fa8</div>
-              </div>
-              <button type="button" class="btn-text" id="copy-api-key-btn">Copy Key</button>
-            </div>
-            <div class="apple-cell">
-              <div class="apple-cell-info">
-                <div class="apple-cell-title">ShareX & ImgBB Drop-in Endpoint</div>
-                <div class="apple-cell-code">POST /api/1/upload</div>
-              </div>
-              <button type="button" class="btn-text" id="copy-sharex-url-btn">Copy URL</button>
             </div>
           </div>
         </div>
@@ -1087,10 +1071,14 @@
       if (setNavStor) setNavStor.innerHTML = Icons.storage_drive;
       const setNavSec = document.getElementById('settings-nav-security-icon');
       if (setNavSec) setNavSec.innerHTML = Icons.shield;
-      const setNavDev = document.getElementById('settings-nav-dev-icon');
-      if (setNavDev) setNavDev.innerHTML = Icons.key;
       const setNavLegal = document.getElementById('settings-nav-legal-icon');
       if (setNavLegal) setNavLegal.innerHTML = Icons.file_text;
+
+      // Topbar alerts and Sidebar activity
+      const topAlerts = document.getElementById('topbar-alerts-icon');
+      if (topAlerts) topAlerts.innerHTML = Icons.bell;
+      const navAct = document.getElementById('nav-activity-icon');
+      if (navAct) navAct.innerHTML = Icons.activity;
 
       // Sidebar Quick Links Icons
       const sideGuide = document.getElementById('sidebar-guide-icon');

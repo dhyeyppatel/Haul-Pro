@@ -53,9 +53,27 @@ def get_db():
             db.files.create_index([("user_id", 1), ("is_trashed", 1)])
             db.files.create_index([("user_id", 1), ("is_starred", 1)])
             db.files.create_index([("user_id", 1), ("category", 1)])
+            db.activities.create_index([("user_id", 1), ("created_at", -1)])
         except Exception:
             pass
     return db
+
+def record_activity(user_id, action, item_name, details, item_type="file", metadata=None):
+    try:
+        database = get_db()
+        uid = ObjectId(user_id) if isinstance(user_id, str) else user_id
+        doc = {
+            "user_id": uid,
+            "action": action,
+            "item_name": str(item_name),
+            "item_type": item_type,
+            "details": details,
+            "metadata": metadata or {},
+            "created_at": datetime.datetime.utcnow()
+        }
+        database.activities.insert_one(doc)
+    except Exception as e:
+        print("Failed to record activity:", e)
 
 # JWT Helper
 def create_token(user_id, email, name):
@@ -522,9 +540,7 @@ def get_storage_stats():
         "storage_limit": user.get("storage_limit_bytes", 15 * 1024 * 1024 * 1024),
         "breakdown": breakdown,
         "trashed_bytes": trashed_bytes,
-        "trashed_count": trashed_count,
-        "api_key": HAUL_MEDIA_API_KEY,
-        "media_host_url": MEDIA_HOST_URL
+        "trashed_count": trashed_count
     })
 
 @app.route("/api/files/empty-trash", methods=["POST"])
@@ -551,19 +567,82 @@ def empty_trash():
     new_used = sum(f.get("size", 0) for f in active_files)
     database.users.update_one({"_id": ObjectId(user_id)}, {"$set": {"storage_used_bytes": new_used}})
 
+    record_activity(user_id, "empty_trash", "Trash", f"Emptied trash ({len(trashed_files)} item(s) permanently removed)", "system")
+
     return jsonify({"success": True, "deleted_count": len(trashed_files), "new_storage_used": new_used})
 
-@app.route("/api/user/preferences", methods=["PATCH"])
-def update_preferences():
+# ==========================================
+# ACTIVITY & ALERTS ENDPOINTS
+# ==========================================
+
+@app.route("/api/activities", methods=["GET"])
+def get_activities():
+    auth_user = authenticate()
+    if not auth_user:
+        return jsonify({"success": False, "error": "Unauthorized"}), 401
+
+    database = get_db()
+    user_id = ObjectId(auth_user["id"])
+    cursor = database.activities.find({"user_id": user_id}).sort("created_at", -1).limit(50)
+    activities = [serialize_doc(doc) for doc in cursor]
+    return jsonify({"success": True, "activities": activities})
+
+@app.route("/api/activities/clear", methods=["POST"])
+def clear_activities():
+    auth_user = authenticate()
+    if not auth_user:
+        return jsonify({"success": False, "error": "Unauthorized"}), 401
+
+    database = get_db()
+    user_id = ObjectId(auth_user["id"])
+    database.activities.delete_many({"user_id": user_id})
+    return jsonify({"success": True, "message": "Activity history cleared."})
+
+@app.route("/api/activities/log", methods=["POST"])
+def client_log_activity():
     auth_user = authenticate()
     if not auth_user:
         return jsonify({"success": False, "error": "Unauthorized"}), 401
 
     data = request.get_json() or {}
+    action = data.get("action") or "custom"
+    item_name = data.get("item_name") or "Item"
+    details = data.get("details") or ""
+    item_type = data.get("item_type") or "file"
+    metadata = data.get("metadata") or {}
+
+    record_activity(auth_user["id"], action, item_name, details, item_type, metadata)
+    return jsonify({"success": True})
+
+# ==========================================
+# SETTINGS & ACCOUNT ENDPOINTS
+# ==========================================
+
+@app.route("/api/auth/change-password", methods=["POST"])
+def change_password():
+    auth_user = authenticate()
+    if not auth_user:
+        return jsonify({"success": False, "error": "Unauthorized"}), 401
+
+    data = request.get_json() or {}
+    current_password = data.get("current_password") or ""
+    new_password = data.get("new_password") or ""
+
+    if not current_password or not new_password:
+        return jsonify({"success": False, "error": "Both current and new password are required."}), 400
+    if len(new_password) < 6:
+        return jsonify({"success": False, "error": "New password must be at least 6 characters."}), 400
+
     database = get_db()
     user_id = ObjectId(auth_user["id"])
-    database.users.update_one({"_id": user_id}, {"$set": {"preferences": data, "updated_at": datetime.datetime.utcnow()}})
-    return jsonify({"success": True, "preferences": data})
+    user = database.users.find_one({"_id": user_id})
+    if not user or not bcrypt.checkpw(current_password.encode("utf-8"), user["password_hash"].encode("utf-8")):
+        return jsonify({"success": False, "error": "Current password is incorrect."}), 400
+
+    salt = bcrypt.gensalt(10)
+    new_hash = bcrypt.hashpw(new_password.encode("utf-8"), salt).decode("utf-8")
+    database.users.update_one({"_id": user_id}, {"$set": {"password_hash": new_hash, "updated_at": datetime.datetime.utcnow()}})
+    return jsonify({"success": True, "message": "Password updated successfully."})
 
 # ==========================================
 # FOLDER ENDPOINTS
@@ -644,6 +723,8 @@ def create_folder():
     }
     res = database.folders.insert_one(folder_doc)
     folder_doc["_id"] = res.inserted_id
+
+    record_activity(user_id, "create_folder", name, f"Created folder '{name}'", "folder")
 
     return jsonify({"success": True, "folder": serialize_doc(folder_doc)}), 201
 
@@ -765,6 +846,7 @@ def toggle_folder_visibility(folder_id):
         {"folder_id": fid, "user_id": user_id},
         {"$set": {"is_public": is_public}}
     )
+    record_activity(user_id, "visibility", res.get("name", "Folder"), f"Changed folder '{res.get('name')}' to {'Public' if is_public else 'Private'}", "folder", {"visibility": "public" if is_public else "private"})
     return jsonify({"success": True, "folder": serialize_doc(res)})
 
 # ==========================================
@@ -849,6 +931,7 @@ def upload_files():
 
         uploaded_items.append(serialize_doc(file_doc))
         total_bytes += final_size
+        record_activity(user_id, "upload", filename, f"Uploaded '{filename}' ({detect_category(ext).capitalize()})", "file", {"size": final_size, "category": category})
 
     # Increment user's storage consumption
     if total_bytes > 0:
@@ -987,11 +1070,13 @@ def delete_file(file_id):
 
     if not permanent and not file_doc.get("is_trashed"):
         database.files.update_one({"_id": fid}, {"$set": {"is_trashed": True, "updated_at": datetime.datetime.utcnow()}})
+        record_activity(user_id, "delete", file_doc.get("name", "File"), f"Moved '{file_doc.get('name')}' to Trash", "file")
         return jsonify({"success": True, "message": "Moved to trash."})
 
     # Permanent delete
     database.files.delete_one({"_id": fid, "user_id": user_id})
     database.users.update_one({"_id": user_id}, {"$inc": {"storage_used_bytes": -file_doc.get("size", 0)}})
+    record_activity(user_id, "delete", file_doc.get("name", "File"), f"Permanently deleted '{file_doc.get('name')}'", "file")
 
     # Clean up on media engine if deleteToken exists
     if file_doc.get("delete_token"):
@@ -1024,6 +1109,7 @@ def move_files():
         {"_id": {"$in": obj_ids}, "user_id": user_id},
         {"$set": {"folder_id": target_fid, "updated_at": datetime.datetime.utcnow()}}
     )
+    record_activity(user_id, "move", f"{len(obj_ids)} files", f"Moved {len(obj_ids)} item(s) to another folder", "file", {"count": len(obj_ids)})
     return jsonify({"success": True, "message": f"Successfully moved {len(obj_ids)} file(s)."})
 
 @app.route("/api/files/<file_id>/visibility", methods=["PATCH"])
@@ -1051,6 +1137,7 @@ def toggle_file_visibility(file_id):
     if not res:
         return jsonify({"success": False, "error": "File not found."}), 404
 
+    record_activity(user_id, "visibility", res.get("name", "File"), f"Changed '{res.get('name')}' to {'Public' if is_public else 'Private'}", "file", {"visibility": "public" if is_public else "private"})
     return jsonify({"success": True, "file": serialize_doc(res)})
 
 @app.route("/api/files/bulk-visibility", methods=["POST"])
@@ -1074,6 +1161,8 @@ def bulk_file_visibility():
         {"_id": {"$in": obj_ids}, "user_id": user_id},
         {"$set": {"is_public": is_public, "updated_at": datetime.datetime.utcnow()}}
     )
+    record_activity(user_id, "visibility", f"{len(obj_ids)} files", f"Changed {len(obj_ids)} file(s) to {'Public' if is_public else 'Private'}", "file", {"count": len(obj_ids), "visibility": "public" if is_public else "private"})
+    return jsonify({"success": True, "message": f"Updated visibility for {len(obj_ids)} file(s)."})
     return jsonify({"success": True, "message": f"Updated visibility for {len(obj_ids)} file(s)."})
 
 @app.route("/api/files/bulk-delete", methods=["POST"])

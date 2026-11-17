@@ -91,6 +91,41 @@ const Uploader = {
     }
   },
 
+  parseLaymanReason(err, file) {
+    if (!navigator.onLine) {
+      return "No internet connection";
+    }
+    const msg = (err && err.message) ? err.message : "";
+    const lower = msg.toLowerCase();
+
+    // Check size limit (Vercel serverless proxy limit is 4.5 MB)
+    if (file && file.size > 4.5 * 1024 * 1024) {
+      return "File exceeds 4.5 MB limit";
+    }
+    if (lower.includes("4.5 mb") || lower.includes("413") || lower.includes("payload") || lower.includes("too large")) {
+      return "File exceeds 4.5 MB limit";
+    }
+    if (lower.includes("quota") || lower.includes("storage limit") || lower.includes("full")) {
+      return "Storage quota full (15 GB)";
+    }
+    if (lower.includes("network") || lower.includes("connection")) {
+      return "Connection lost during upload";
+    }
+    if (lower.includes("timeout") || lower.includes("504")) {
+      return "Upload timed out - please retry";
+    }
+    if (lower.includes("busy") || lower.includes("502") || lower.includes("rejected")) {
+      return "Storage server busy - please retry";
+    }
+    if (lower.includes("unauthorized") || lower.includes("401")) {
+      return "Session expired - please log in";
+    }
+    if (msg && msg.length < 35 && !msg.includes("<")) {
+      return msg;
+    }
+    return "Upload failed - please retry";
+  },
+
   async handleFiles(fileList) {
     const drawer = document.getElementById('upload-drawer');
     const listEl = document.getElementById('upload-drawer-list');
@@ -139,12 +174,15 @@ const Uploader = {
           }
         }
       } catch (err) {
+        const laymanReason = this.parseLaymanReason(err, file);
         if (statusEl) {
-          statusEl.innerHTML = `<span style="color: #ea4335; font-size: 11px;">Failed</span>`;
+          statusEl.innerHTML = `<span class="upload-fail-badge" title="${laymanReason}">Failed: ${laymanReason}</span>`;
         }
         if (fillEl) {
+          fillEl.style.width = '100%';
           fillEl.style.backgroundColor = '#ea4335';
         }
+        Drive.showToast(`Upload failed for "${file.name}": ${laymanReason}`, 'error');
       }
     }
 

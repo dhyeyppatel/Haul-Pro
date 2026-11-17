@@ -89,25 +89,7 @@ const Drive = {
     // Sidebar navigation items
     document.querySelectorAll('.nav-list .nav-item').forEach(item => {
       item.addEventListener('click', () => {
-        if (this.isPublicMode && !this.isOwnerMode) return;
-        document.querySelectorAll('.nav-list .nav-item').forEach(el => el.classList.remove('active'));
-        item.classList.add('active');
-        this.currentNav = item.dataset.nav || 'drive';
-        this.currentFolderId = null;
-        this.searchQuery = '';
-        this.clearSelection();
-        const searchInput = document.getElementById('search-input');
-        if (searchInput) searchInput.value = '';
-
-        // If user was in public profile and clicks sidebar, return to root personal drive
-        if (this.isPublicMode) {
-          history.pushState(null, '', '/');
-          this.isPublicMode = false;
-          this.profileUsername = null;
-          this.isOwnerMode = false;
-        }
-
-        this.reload();
+        this.switchNav(item.dataset.nav || 'drive');
       });
     });
 
@@ -142,27 +124,7 @@ const Drive = {
       item.addEventListener('click', () => {
         const nav = item.dataset.nav;
         if (!nav) return;
-        document.querySelectorAll('#mobile-tab-bar .mobile-tab-item').forEach(el => el.classList.remove('active'));
-        item.classList.add('active');
-
-        // Sync with sidebar nav
-        document.querySelectorAll('.nav-list .nav-item').forEach(el => {
-          el.classList.toggle('active', el.dataset.nav === nav);
-        });
-
-        this.currentNav = nav;
-        this.currentFolderId = null;
-        this.searchQuery = '';
-        this.clearSelection();
-
-        if (this.isPublicMode) {
-          history.pushState(null, '', '/');
-          this.isPublicMode = false;
-          this.profileUsername = null;
-          this.isOwnerMode = false;
-        }
-
-        this.reload();
+        this.switchNav(nav);
       });
     });
 
@@ -354,7 +316,32 @@ const Drive = {
     this.selectedFile = null;
     this.clearSelection();
 
+    const activityView = document.getElementById('activity-view');
+    const foldersSection = document.getElementById('folders-section');
+    const filesContainer = document.getElementById('files-container');
+    const filesSectionLabel = document.getElementById('files-section-label');
+    const filterChips = document.querySelector('.filter-chips');
+    const toggleViewBtn = document.getElementById('toggle-view-btn');
+
     try {
+      if (this.currentNav === 'activity') {
+        this.hidePublicProfileBanner();
+        if (foldersSection) foldersSection.style.display = 'none';
+        if (filesContainer) filesContainer.style.display = 'none';
+        if (filesSectionLabel) filesSectionLabel.style.display = 'none';
+        if (filterChips) filterChips.style.display = 'none';
+        if (toggleViewBtn) toggleViewBtn.style.display = 'none';
+        if (activityView) activityView.style.display = 'block';
+        this.renderBreadcrumbs([{ id: null, name: 'Activity & Alerts' }]);
+        await this.loadActivities();
+        return;
+      }
+
+      if (activityView) activityView.style.display = 'none';
+      if (filesContainer) filesContainer.style.display = 'block';
+      if (filterChips) filterChips.style.display = 'flex';
+      if (toggleViewBtn) toggleViewBtn.style.display = 'inline-flex';
+
       if (this.isPublicMode) {
         await this.loadPublicDrive();
       } else {
@@ -543,6 +530,10 @@ const Drive = {
 
     navigator.clipboard.writeText(inputEl.value).then(() => {
       this.showToast('Folder share link copied to clipboard!');
+      const folder = this.folders.find(f => f.id === this.sharingFolderId);
+      if (folder && API.logActivity) {
+        API.logActivity('share', `Shared public link for folder '${folder.name}'`, folder.name, 'folder');
+      }
       this.closeShareFolderModal();
     });
   },
@@ -1514,7 +1505,7 @@ const Drive = {
       <div class="context-menu-item" onclick="Viewer.open(Drive.selectedFile)">
         ${Icons.info} <span>Preview</span>
       </div>
-      <div class="context-menu-item" onclick="Drive.copyDirectLink('${file.hosted_url}')">
+      <div class="context-menu-item" onclick="Drive.copyDirectLink('${file.hosted_url}', '${file.name.replace(/'/g, "\\'")}')">
         ${Icons.link} <span>Copy direct link</span>
       </div>
       <div class="context-menu-item" onclick="Viewer.download()">
@@ -1554,9 +1545,7 @@ const Drive = {
     }
 
     menu.innerHTML = html;
-    menu.style.display = 'block';
-    menu.style.top = `${e.clientY}px`;
-    menu.style.left = `${Math.min(e.clientX, window.innerWidth - 220)}px`;
+    this.positionContextMenu(e, menu);
   },
 
   showFolderContextMenu(e, folderId) {
@@ -1601,9 +1590,46 @@ const Drive = {
     }
 
     menu.innerHTML = html;
+    this.positionContextMenu(e, menu);
+  },
+
+  positionContextMenu(e, menu) {
     menu.style.display = 'block';
-    menu.style.top = `${e.clientY}px`;
-    menu.style.left = `${Math.min(e.clientX, window.innerWidth - 220)}px`;
+    menu.style.visibility = 'hidden';
+    menu.style.top = '0px';
+    menu.style.left = '0px';
+
+    const menuRect = menu.getBoundingClientRect();
+    const menuHeight = menuRect.height || 260;
+    const menuWidth = menuRect.width || 210;
+
+    const viewportHeight = window.innerHeight;
+    const viewportWidth = window.innerWidth;
+
+    let clickX = (e && typeof e.clientX === 'number') ? e.clientX : 0;
+    let clickY = (e && typeof e.clientY === 'number') ? e.clientY : 0;
+
+    if (!clickX && !clickY && e && e.currentTarget && e.currentTarget.getBoundingClientRect) {
+      const rect = e.currentTarget.getBoundingClientRect();
+      clickX = rect.left;
+      clickY = rect.bottom;
+    }
+
+    let top = clickY;
+    // Smart flip-up: If opening downward would push menu past screen bottom (or Windows taskbar), open upward
+    if (top + menuHeight > viewportHeight - 16) {
+      top = Math.max(16, clickY - menuHeight);
+    }
+
+    let left = clickX;
+    // Keep menu within screen right boundary
+    if (left + menuWidth > viewportWidth - 16) {
+      left = Math.max(16, viewportWidth - menuWidth - 16);
+    }
+
+    menu.style.top = `${top}px`;
+    menu.style.left = `${left}px`;
+    menu.style.visibility = 'visible';
   },
 
   // ==========================================
@@ -1659,9 +1685,13 @@ const Drive = {
     }
   },
 
-  copyDirectLink(url) {
+  copyDirectLink(url, name) {
+    const fileName = name || (this.selectedFile ? this.selectedFile.name : 'file');
     navigator.clipboard.writeText(url).then(() => {
       this.showToast('Direct media link copied to clipboard!');
+      if (API.logActivity) {
+        API.logActivity('share', `Shared direct link for '${fileName}'`, fileName, 'file');
+      }
     });
   },
 
@@ -1715,5 +1745,193 @@ const Drive = {
       toast.classList.remove('visible');
       setTimeout(() => toast.remove(), 300);
     }, 3500);
+  },
+
+  // ==========================================
+  // NAVIGATION & ACTIVITIES FEED
+  // ==========================================
+  switchNav(nav) {
+    if (this.isPublicMode && !this.isOwnerMode) return;
+
+    document.querySelectorAll('.nav-list .nav-item').forEach(el => {
+      el.classList.toggle('active', el.dataset.nav === nav);
+    });
+    document.querySelectorAll('#mobile-tab-bar .mobile-tab-item').forEach(el => {
+      el.classList.toggle('active', el.dataset.nav === nav);
+    });
+
+    this.currentNav = nav || 'drive';
+    this.currentFolderId = null;
+    this.searchQuery = '';
+    this.clearSelection();
+
+    const searchInput = document.getElementById('search-input');
+    if (searchInput) searchInput.value = '';
+
+    if (this.isPublicMode) {
+      history.pushState(null, '', '/');
+      this.isPublicMode = false;
+      this.profileUsername = null;
+      this.isOwnerMode = false;
+    }
+
+    this.reload();
+  },
+
+  async loadActivities() {
+    const listEl = document.getElementById('activity-list');
+    if (!listEl) return;
+
+    listEl.innerHTML = `
+      <div style="padding: 40px 0; text-align: center; color: var(--color-text-secondary, #5f6368);">
+        <div class="drive-spinner" style="margin: 0 auto 12px;"></div>
+        <div>Loading activity feed...</div>
+      </div>
+    `;
+
+    try {
+      const res = await API.getActivities(60);
+      const activities = (res && res.activities) ? res.activities : [];
+
+      if (activities.length === 0) {
+        listEl.innerHTML = `
+          <div class="activity-empty-state">
+            <div class="activity-empty-icon">${Icons.bell || Icons.activity}</div>
+            <div class="activity-empty-title">No Recent Activity</div>
+            <div class="activity-empty-desc">Your file uploads, sharing, visibility changes, moves, and deletions will be logged here in real-time.</div>
+          </div>
+        `;
+        return;
+      }
+
+      listEl.innerHTML = activities.map(act => this.renderActivityItem(act)).join('');
+    } catch (err) {
+      listEl.innerHTML = `
+        <div class="activity-empty-state">
+          <div class="activity-empty-icon">${Icons.alert_triangle}</div>
+          <div class="activity-empty-title">Unable to Load Activity</div>
+          <div class="activity-empty-desc">${this.escapeHtml(err.message || 'Please check your connection and try again.')}</div>
+        </div>
+      `;
+    }
+  },
+
+  renderActivityItem(act) {
+    const action = act.action || 'activity';
+    let icon = Icons.activity;
+    let badgeClass = 'badge-info';
+    let badgeText = 'Activity';
+
+    switch (action) {
+      case 'upload':
+        icon = Icons.storage_drive || Icons.cloud || Icons.file_generic;
+        badgeClass = 'badge-upload';
+        badgeText = 'Upload';
+        break;
+      case 'public':
+        icon = Icons.globe;
+        badgeClass = 'badge-public';
+        badgeText = 'Public';
+        break;
+      case 'private':
+        icon = Icons.lock;
+        badgeClass = 'badge-private';
+        badgeText = 'Private';
+        break;
+      case 'share':
+        icon = Icons.link || Icons.share;
+        badgeClass = 'badge-share';
+        badgeText = 'Shared';
+        break;
+      case 'delete':
+        icon = Icons.trash;
+        badgeClass = 'badge-delete';
+        badgeText = 'Deleted';
+        break;
+      case 'move':
+        icon = Icons.move;
+        badgeClass = 'badge-move';
+        badgeText = 'Moved';
+        break;
+      case 'folder':
+        icon = Icons.folder;
+        badgeClass = 'badge-folder';
+        badgeText = 'Folder';
+        break;
+      case 'restore':
+        icon = Icons.check || Icons.storage_drive;
+        badgeClass = 'badge-restore';
+        badgeText = 'Restored';
+        break;
+      case 'rename':
+        icon = Icons.rename || Icons.edit;
+        badgeClass = 'badge-rename';
+        badgeText = 'Renamed';
+        break;
+      case 'empty_trash':
+        icon = Icons.trash;
+        badgeClass = 'badge-delete';
+        badgeText = 'Cleaned';
+        break;
+    }
+
+    const timeAgo = this.formatTimeAgo(act.created_at);
+    const itemName = this.escapeHtml(act.item_name || 'Item');
+    const details = this.escapeHtml(act.details || '');
+
+    return `
+      <div class="activity-card">
+        <div class="activity-icon-bubble ${badgeClass}">
+          ${icon}
+        </div>
+        <div class="activity-content">
+          <div class="activity-title-row">
+            <span class="activity-text">${details || itemName}</span>
+            <span class="activity-badge ${badgeClass}">${badgeText}</span>
+          </div>
+          <div class="activity-meta">
+            <span class="activity-time">${timeAgo}</span>
+            ${act.item_type ? `<span class="activity-bullet">•</span><span class="activity-type">${this.escapeHtml(act.item_type)}</span>` : ''}
+          </div>
+        </div>
+      </div>
+    `;
+  },
+
+  async clearActivities() {
+    if (!confirm('Clear all recent activity logs?')) return;
+    try {
+      await API.clearActivities();
+      this.showToast('Activity history cleared');
+      await this.loadActivities();
+    } catch (err) {
+      this.showToast(err.message || 'Failed to clear activity', 'error');
+    }
+  },
+
+  formatTimeAgo(dateStr) {
+    if (!dateStr) return 'Just now';
+    const date = new Date(dateStr);
+    const now = new Date();
+    const diffSec = Math.floor((now - date) / 1000);
+
+    if (diffSec < 45) return 'Just now';
+    if (diffSec < 90) return '1 min ago';
+    if (diffSec < 3600) return `${Math.floor(diffSec / 60)} mins ago`;
+    if (diffSec < 7200) return '1 hour ago';
+    if (diffSec < 86400) return `${Math.floor(diffSec / 3600)} hours ago`;
+    if (diffSec < 172800) return 'Yesterday';
+    if (diffSec < 604800) return `${Math.floor(diffSec / 86400)} days ago`;
+    return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+  },
+
+  escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
   }
 };

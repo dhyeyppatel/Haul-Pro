@@ -170,16 +170,47 @@ const API = {
           if (xhr.status >= 200 && xhr.status < 300) {
             resolve(res);
           } else {
-            reject(new Error(res.error || 'Upload failed'));
+            const err = new Error(res.error || `Upload failed (${xhr.status})`);
+            err.status = xhr.status;
+            err.response = res;
+            reject(err);
           }
-        } catch (err) {
-          reject(new Error('Invalid response'));
+        } catch (parseErr) {
+          let msg = `Server error (${xhr.status})`;
+          if (xhr.status === 413 || (xhr.responseText && (xhr.responseText.includes('413') || xhr.responseText.includes('FUNCTION_PAYLOAD_TOO_LARGE')))) {
+            msg = 'File exceeds 4.5 MB limit';
+          } else if (xhr.status === 504 || xhr.status === 502) {
+            msg = 'Storage server temporarily busy';
+          }
+          const err = new Error(msg);
+          err.status = xhr.status;
+          err.rawText = xhr.responseText;
+          reject(err);
         }
       };
 
-      xhr.onerror = () => reject(new Error('Network error during upload'));
+      xhr.onerror = () => {
+        const err = new Error('Network error - check your connection');
+        err.status = 0;
+        reject(err);
+      };
       xhr.send(formData);
     });
+  },
+
+  async getActivities() {
+    return this.request('/api/activities');
+  },
+
+  async clearActivities() {
+    return this.request('/api/activities/clear', { method: 'POST' });
+  },
+
+  async logActivity(action, details, itemName = 'Item', itemType = 'file', metadata = {}) {
+    return this.request('/api/activities/log', {
+      method: 'POST',
+      body: { action, details, item_name: itemName, item_type: itemType, metadata }
+    }).catch(() => {});
   },
 
   async updateFile(fileId, updates) {
