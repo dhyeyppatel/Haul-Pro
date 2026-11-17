@@ -349,17 +349,21 @@
   <div id="viewer-modal" class="viewer-modal">
     <div class="viewer-header">
       <div class="viewer-title-info">
-        <button id="viewer-close-btn" class="viewer-btn" title="Close preview">
+        <button id="viewer-close-btn" class="viewer-btn icon-only" title="Close preview">
           <span id="viewer-close-icon"></span>
         </button>
         <div id="viewer-filename" class="viewer-filename">File Name</div>
+        <span id="viewer-meta-badge" class="viewer-meta-badge" style="display: none;"></span>
       </div>
+      <div id="viewer-mode-switch" class="viewer-mode-switch" style="display: none;"></div>
       <div class="viewer-actions">
         <button id="viewer-download-btn" class="viewer-btn" title="Download">
           <span id="viewer-download-icon"></span>
+          <span>Download</span>
         </button>
         <button id="viewer-copy-link-btn" class="viewer-btn" title="Copy direct link">
           <span id="viewer-link-icon"></span>
+          <span>Copy link</span>
         </button>
       </div>
     </div>

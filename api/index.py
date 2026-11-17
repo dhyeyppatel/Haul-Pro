@@ -158,7 +158,7 @@ def serialize_doc(doc):
 @app.route("/api/auth/register", methods=["POST"])
 def register():
     try:
-        data = request.get_json() or {}
+        data = request.get_json(silent=True) or {}
         name = (data.get("name") or "").strip()
         email = (data.get("email") or "").strip().lower()
         password = data.get("password") or ""
@@ -227,13 +227,15 @@ def register():
         resp.set_cookie("token", token, httponly=True, samesite="Lax", max_age=14*24*3600)
         return resp
     except Exception as e:
+        if isinstance(e, HTTPException):
+            return jsonify({"success": False, "error": e.description}), e.code
         print("Register error:", e)
         return jsonify({"success": False, "error": f"Registration failed: {str(e)}"}), 500
 
 @app.route("/api/auth/login", methods=["POST"])
 def login():
     try:
-        data = request.get_json() or {}
+        data = request.get_json(silent=True) or {}
         email = (data.get("email") or "").strip().lower()
         password = data.get("password") or ""
 
@@ -245,7 +247,10 @@ def login():
         if not user:
             return jsonify({"success": False, "error": "Invalid email or password."}), 401
 
-        if not bcrypt.checkpw(password.encode("utf-8"), user["password_hash"].encode("utf-8")):
+        stored_hash = user.get("password_hash") or ""
+        if isinstance(stored_hash, str):
+            stored_hash = stored_hash.encode("utf-8")
+        if not stored_hash or not bcrypt.checkpw(password.encode("utf-8"), stored_hash):
             return jsonify({"success": False, "error": "Invalid email or password."}), 401
 
         # Backfill username if missing
@@ -278,6 +283,8 @@ def login():
         resp.set_cookie("token", token, httponly=True, samesite="Lax", max_age=14*24*3600)
         return resp
     except Exception as e:
+        if isinstance(e, HTTPException):
+            return jsonify({"success": False, "error": e.description}), e.code
         print("Login error:", e)
         return jsonify({"success": False, "error": f"Login failed: {str(e)}"}), 500
 

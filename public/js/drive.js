@@ -702,6 +702,21 @@ const Drive = {
     } catch (err) {
       console.error('Failed to load profile:', err);
       this.showToast(err.message || 'Could not load profile.', 'error');
+      const container = document.getElementById('files-container');
+      const foldersEl = document.getElementById('folders-container');
+      const banner = document.getElementById('public-profile-banner');
+      if (banner) banner.style.display = 'none';
+      if (foldersEl) foldersEl.innerHTML = '';
+      if (container) {
+        container.innerHTML = `
+          <div style="text-align: center; padding: 64px 20px; color: #5f6368;">
+            <div style="margin-bottom: 16px; color: #ea4335;">${Icons.alert_triangle || Icons.info}</div>
+            <h3 style="font-size: 20px; font-weight: 600; color: #202124; margin-bottom: 8px;">User not found</h3>
+            <p style="font-size: 14px; margin-bottom: 20px;">The profile @${this.profileUsername || 'user'} does not exist or has been removed.</p>
+            <a href="/" class="btn btn-primary" style="display: inline-flex; align-items: center; gap: 8px; text-decoration: none; padding: 8px 18px; border-radius: 8px; background: #1a73e8; color: white; font-weight: 500;">Go to My Drive</a>
+          </div>
+        `;
+      }
     } finally {
       if (loader) loader.classList.add('hidden');
     }
@@ -1499,11 +1514,15 @@ const Drive = {
     const isStarred = Boolean(file.is_starred);
     const isTrashed = Boolean(file.is_trashed);
     const isPublic = file.is_public === true;
-    const canManage = !this.isPublicMode || this.isOwnerMode;
+    const isOwner = Boolean(this.isOwnerMode || (Auth.currentUser && this.profileUsername && Auth.currentUser.username && Auth.currentUser.username.toLowerCase() === this.profileUsername.toLowerCase()));
+    const canManage = !this.isPublicMode || isOwner;
 
     let html = `
       <div class="context-menu-item" onclick="Viewer.open(Drive.selectedFile)">
         ${Icons.info} <span>Preview</span>
+      </div>
+      <div class="context-menu-item" onclick="Drive.shareFile('${file.id}')">
+        ${Icons.share} <span>Share</span>
       </div>
       <div class="context-menu-item" onclick="Drive.copyDirectLink('${file.hosted_url}', '${file.name.replace(/'/g, "\\'")}')">
         ${Icons.link} <span>Copy direct link</span>
@@ -1558,7 +1577,8 @@ const Drive = {
     const menu = document.getElementById('context-menu');
     if (!menu) return;
 
-    const canManage = !this.isPublicMode || this.isOwnerMode;
+    const isOwner = Boolean(this.isOwnerMode || (Auth.currentUser && this.profileUsername && Auth.currentUser.username && Auth.currentUser.username.toLowerCase() === this.profileUsername.toLowerCase()));
+    const canManage = !this.isPublicMode || isOwner;
     const isPublic = folder.is_public === true;
 
     let html = `
@@ -1683,6 +1703,21 @@ const Drive = {
     } catch (e) {
       this.showToast(e.message || 'Failed to delete folder', 'error');
     }
+  },
+
+  shareFile(fileId) {
+    const file = this.files.find(f => f.id === fileId);
+    if (!file) return;
+    const url = file.hosted_url || '';
+    if (!url) return;
+    navigator.clipboard.writeText(url).then(() => {
+      this.showToast('Shareable file link copied to clipboard!');
+      if (API.logActivity) {
+        API.logActivity('share', `Shared link for '${file.name}'`, file.name, 'file');
+      }
+    }).catch(() => {
+      this.showToast('Failed to copy link', 'error');
+    });
   },
 
   copyDirectLink(url, name) {
