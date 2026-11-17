@@ -89,6 +89,58 @@ const Uploader = {
         Drive.openNewFolderModal();
       });
     }
+
+    const menuUploadUrl = document.getElementById('menu-upload-url');
+    if (menuUploadUrl) {
+      menuUploadUrl.addEventListener('click', () => {
+        this.openUrlUploadModal();
+      });
+    }
+  },
+
+  openUrlUploadModal() {
+    const modal = document.getElementById('url-upload-modal');
+    const input = document.getElementById('url-upload-input');
+    if (input) input.value = '';
+    if (modal) modal.style.display = 'flex';
+    if (input) setTimeout(() => input.focus(), 60);
+  },
+
+  closeUrlUploadModal() {
+    const modal = document.getElementById('url-upload-modal');
+    if (modal) modal.style.display = 'none';
+  },
+
+  async submitUrlUpload() {
+    const input = document.getElementById('url-upload-input');
+    const btn = document.getElementById('url-upload-submit-btn');
+    const url = input ? input.value.trim() : '';
+
+    if (!url) {
+      Drive.showToast('Please enter a valid media or file URL', 'error');
+      return;
+    }
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      Drive.showToast('URL must start with http:// or https://', 'error');
+      return;
+    }
+
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = 'Hosting...';
+    }
+
+    try {
+      this.closeUrlUploadModal();
+      await this.handleUrlUpload(url);
+    } catch (e) {
+      // toast already shown in handleUrlUpload
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = 'Upload';
+      }
+    }
   },
 
   parseLaymanReason(err, file) {
@@ -98,12 +150,12 @@ const Uploader = {
     const msg = (err && err.message) ? err.message : "";
     const lower = msg.toLowerCase();
 
-    // Check size limit (Vercel serverless proxy limit is 4.5 MB)
-    if (file && file.size > 4.5 * 1024 * 1024) {
-      return "File exceeds 4.5 MB limit";
+    // Check size limit: Cloudflare Edge Direct Upload supports large files
+    if (file && file.size > 100 * 1024 * 1024) {
+      return "File exceeds 100 MB limit";
     }
-    if (lower.includes("4.5 mb") || lower.includes("413") || lower.includes("payload") || lower.includes("too large")) {
-      return "File exceeds 4.5 MB limit";
+    if (lower.includes("100 mb") || lower.includes("413") || lower.includes("payload") || lower.includes("too large")) {
+      return "File exceeds storage limit";
     }
     if (lower.includes("quota") || lower.includes("storage limit") || lower.includes("full")) {
       return "Storage quota full (15 GB)";
@@ -154,7 +206,7 @@ const Uploader = {
       const fillEl = itemEl.querySelector('.upload-progress-fill');
 
       try {
-        const uploadRes = await API.uploadFiles([file], Drive.currentFolderId, (percent) => {
+        const uploadRes = await API.uploadFileDirect(file, Drive.currentFolderId, (percent) => {
           const p = Math.min(100, Math.max(0, percent));
           if (statusEl) statusEl.textContent = `${p}%`;
           if (fillEl) fillEl.style.width = `${p}%`;
@@ -166,9 +218,10 @@ const Uploader = {
           fillEl.style.width = '100%';
           fillEl.style.backgroundColor = '#34a853';
         }
-        if (uploadRes && uploadRes.files && uploadRes.files[0] && uploadRes.files[0].hosted_url) {
+        const uploadedFile = (uploadRes && (uploadRes.file || (uploadRes.files && uploadRes.files[0])));
+        if (uploadedFile && uploadedFile.hosted_url) {
           if (typeof Settings !== 'undefined' && Settings.preferences.autoCopy) {
-            navigator.clipboard.writeText(uploadRes.files[0].hosted_url).then(() => {
+            navigator.clipboard.writeText(uploadedFile.hosted_url).then(() => {
               Drive.showToast('Media link copied to clipboard!');
             }).catch(() => {});
           }
@@ -190,5 +243,20 @@ const Uploader = {
     // Refresh drive contents and user storage usage
     Drive.reload();
     Auth.checkSession();
+  },
+
+  async handleUrlUpload(remoteUrl) {
+    if (!remoteUrl || !remoteUrl.trim()) return;
+    Drive.showToast('Fetching and hosting remote URL...');
+    try {
+      const res = await API.uploadFromUrl(remoteUrl.trim(), Drive.currentFolderId);
+      Drive.showToast('Remote file hosted successfully!');
+      Drive.reload();
+      if (Auth && Auth.checkSession) Auth.checkSession();
+      return res;
+    } catch (err) {
+      Drive.showToast(err.message || 'Failed to upload from remote URL', 'error');
+      throw err;
+    }
   }
 };

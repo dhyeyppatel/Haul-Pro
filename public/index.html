@@ -140,6 +140,10 @@
           <span id="menu-upload-icon"></span>
           <span>File upload</span>
         </div>
+        <div id="menu-upload-url" class="dropdown-item">
+          <span id="menu-url-icon"></span>
+          <span>Upload from URL</span>
+        </div>
       </div>
 
       <!-- Hidden File Upload Input -->
@@ -416,6 +420,28 @@
       <div class="modal-actions">
         <button type="button" class="btn-text" id="new-folder-cancel-btn">Cancel</button>
         <button type="button" class="btn-filled" id="new-folder-create-btn">Create</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- REMOTE URL UPLOAD MODAL -->
+  <div id="url-upload-modal" class="modal-backdrop" style="display: none;">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 class="modal-title">Upload from URL</h3>
+        <button type="button" class="icon-btn" onclick="Uploader.closeUrlUploadModal()" style="width: 32px; height: 32px;">
+          <span id="url-upload-close-icon"></span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size: 13px; color: var(--text-secondary, #5f6368); margin-bottom: 14px;">
+          Enter any image, media, or file URL to download and host it directly on your Cloudflare edge storage.
+        </p>
+        <input type="url" id="url-upload-input" class="modal-input" placeholder="https://example.com/image.jpg" autocomplete="off" onkeydown="if(event.key==='Enter') Uploader.submitUrlUpload()">
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn-text" onclick="Uploader.closeUrlUploadModal()">Cancel</button>
+        <button type="button" class="btn-filled" id="url-upload-submit-btn" onclick="Uploader.submitUrlUpload()">Upload</button>
       </div>
     </div>
   </div>
@@ -1122,7 +1148,13 @@
       const mobTrash = document.getElementById('mob-nav-trash-icon');
       if (mobTrash) mobTrash.innerHTML = Icons.trash;
 
+      const menuUrlIcon = document.getElementById('menu-url-icon');
+      if (menuUrlIcon) menuUrlIcon.innerHTML = Icons.link;
+      const urlUploadClose = document.getElementById('url-upload-close-icon');
+      if (urlUploadClose) urlUploadClose.innerHTML = Icons.close;
+
       // Start controllers
+      API.initConfig();
       Auth.init();
       Viewer.init();
       Uploader.init();

@@ -434,6 +434,8 @@ def upload_avatar():
         }
     })
 
+
+
 # ==========================================
 # SETTINGS & ACCOUNT ENDPOINTS
 # ==========================================
@@ -614,35 +616,7 @@ def client_log_activity():
     record_activity(auth_user["id"], action, item_name, details, item_type, metadata)
     return jsonify({"success": True})
 
-# ==========================================
-# SETTINGS & ACCOUNT ENDPOINTS
-# ==========================================
 
-@app.route("/api/auth/change-password", methods=["POST"])
-def change_password():
-    auth_user = authenticate()
-    if not auth_user:
-        return jsonify({"success": False, "error": "Unauthorized"}), 401
-
-    data = request.get_json() or {}
-    current_password = data.get("current_password") or ""
-    new_password = data.get("new_password") or ""
-
-    if not current_password or not new_password:
-        return jsonify({"success": False, "error": "Both current and new password are required."}), 400
-    if len(new_password) < 6:
-        return jsonify({"success": False, "error": "New password must be at least 6 characters."}), 400
-
-    database = get_db()
-    user_id = ObjectId(auth_user["id"])
-    user = database.users.find_one({"_id": user_id})
-    if not user or not bcrypt.checkpw(current_password.encode("utf-8"), user["password_hash"].encode("utf-8")):
-        return jsonify({"success": False, "error": "Current password is incorrect."}), 400
-
-    salt = bcrypt.gensalt(10)
-    new_hash = bcrypt.hashpw(new_password.encode("utf-8"), salt).decode("utf-8")
-    database.users.update_one({"_id": user_id}, {"$set": {"password_hash": new_hash, "updated_at": datetime.datetime.utcnow()}})
-    return jsonify({"success": True, "message": "Password updated successfully."})
 
 # ==========================================
 # FOLDER ENDPOINTS
@@ -850,8 +824,75 @@ def toggle_folder_visibility(folder_id):
     return jsonify({"success": True, "folder": serialize_doc(res)})
 
 # ==========================================
-# FILE ENDPOINTS (UPLOAD VIA COMMONTHREAD ENGINE, PRE-LOAD PAGINATION)
+# FILE ENDPOINTS (DIRECT CLOUDFLARE UPLOADS & METADATA RECORDING)
 # ==========================================
+
+@app.route("/api/config", methods=["GET"])
+def get_config():
+    return jsonify({
+        "success": True,
+        "media_host_url": MEDIA_HOST_URL,
+        "upload_url": f"{MEDIA_HOST_URL}/upload",
+        "hosturl_url": f"{MEDIA_HOST_URL}/hosturl"
+    })
+
+@app.route("/api/files/record", methods=["POST"])
+def record_file():
+    auth_user = authenticate()
+    if not auth_user:
+        return jsonify({"success": False, "error": "Unauthorized"}), 401
+
+    data = request.get_json() or {}
+    hosted_url = (data.get("hosted_url") or data.get("url") or data.get("data") or "").strip()
+    if not hosted_url:
+        return jsonify({"success": False, "error": "File hosted URL is required."}), 400
+
+    filename = (data.get("name") or data.get("filename") or "file.bin").strip()
+    file_size = int(data.get("size") or 0)
+    mime_type = (data.get("mime_type") or data.get("media_type") or "application/octet-stream").strip()
+    ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
+    category = detect_category(ext, mime_type)
+
+    folder_param = data.get("folder_id") or data.get("folderId")
+    folder_id = ObjectId(folder_param) if folder_param and str(folder_param) not in ("root", "null", "undefined") else None
+    is_public = bool(data.get("is_public", False))
+    delete_token = data.get("delete_token") or ""
+
+    database = get_db()
+    user_id = ObjectId(auth_user["id"])
+
+    now = datetime.datetime.utcnow()
+    file_doc = {
+        "name": filename,
+        "user_id": user_id,
+        "folder_id": folder_id,
+        "size": file_size,
+        "mime_type": mime_type,
+        "extension": ext,
+        "category": category,
+        "hosted_url": hosted_url,
+        "delete_token": delete_token,
+        "is_public": is_public,
+        "is_starred": False,
+        "is_trashed": False,
+        "tags": [],
+        "views": 0,
+        "downloads": 0,
+        "created_at": now,
+        "updated_at": now
+    }
+    ins_res = database.files.insert_one(file_doc)
+    file_doc["_id"] = ins_res.inserted_id
+
+    # Increment user storage consumption
+    if file_size > 0:
+        database.users.update_one({"_id": user_id}, {"$inc": {"storage_used_bytes": file_size}})
+
+    # Log activity
+    record_activity(user_id, "upload", filename, f"Uploaded '{filename}' ({category.capitalize()})", "file", {"size": file_size, "category": category})
+
+    serialized = serialize_doc(file_doc)
+    return jsonify({"success": True, "file": serialized, "files": [serialized]}), 201
 
 @app.route("/api/files/upload", methods=["POST"])
 def upload_files():

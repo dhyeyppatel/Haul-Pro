@@ -2,8 +2,28 @@
 
 const API = {
   baseUrl: '',
+  uploadHostUrl: 'https://media-hosting.dhyeyp254.workers.dev',
   prefetchCache: new Map(),
   preloadedImages: new Set(),
+
+  getUploadUrl() {
+    const host = (this.uploadHostUrl || 'https://media-hosting.dhyeyp254.workers.dev').replace(/\/+$/, '');
+    return `${host}/upload`;
+  },
+
+  getHostUrlEndpoint() {
+    const host = (this.uploadHostUrl || 'https://media-hosting.dhyeyp254.workers.dev').replace(/\/+$/, '');
+    return `${host}/hosturl`;
+  },
+
+  async initConfig() {
+    try {
+      const res = await this.request('/api/config');
+      if (res && res.media_host_url) {
+        this.uploadHostUrl = res.media_host_url;
+      }
+    } catch (e) {}
+  },
 
   async request(endpoint, options = {}) {
     const defaultHeaders = {};
@@ -139,26 +159,24 @@ const API = {
     });
   },
 
-  async uploadFiles(files, folderId = null, onProgress = null) {
-    const formData = new FormData();
-    for (let i = 0; i < files.length; i++) {
-      formData.append('files', files[i]);
-    }
-    if (folderId && folderId !== 'root') {
-      formData.append('folderId', folderId);
-    }
+  async uploadFileDirect(file, folderId = null, onProgress = null) {
     const defaultVis = typeof Settings !== 'undefined' ? Settings.preferences.defaultVisibility : 'private';
-    formData.append('is_public', defaultVis === 'public' ? 'true' : 'false');
+    const isPublic = defaultVis === 'public';
 
-    return new Promise((resolve, reject) => {
+    // 1. Direct Multipart upload to Cloudflare storage worker (Bypasses Vercel 4.5MB limit entirely)
+    const uploadUrl = this.getUploadUrl();
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const cloudflareRes = await new Promise((resolve, reject) => {
       const xhr = new XMLHttpRequest();
-      xhr.open('POST', '/api/files/upload');
-      xhr.withCredentials = true;
+      xhr.open('POST', uploadUrl);
 
       if (onProgress && xhr.upload) {
         xhr.upload.onprogress = (e) => {
           if (e.lengthComputable) {
-            const percent = Math.round((e.loaded / e.total) * 100);
+            // Map raw byte upload to 0% - 90%
+            const percent = Math.min(90, Math.round((e.loaded / e.total) * 90));
             onProgress(percent);
           }
         };
@@ -167,34 +185,93 @@ const API = {
       xhr.onload = () => {
         try {
           const res = JSON.parse(xhr.responseText);
-          if (xhr.status >= 200 && xhr.status < 300) {
+          if (xhr.status >= 200 && xhr.status < 300 && res.success !== false) {
             resolve(res);
           } else {
-            const err = new Error(res.error || `Upload failed (${xhr.status})`);
+            const err = new Error(res.error || `Storage error (${xhr.status})`);
             err.status = xhr.status;
-            err.response = res;
             reject(err);
           }
-        } catch (parseErr) {
-          let msg = `Server error (${xhr.status})`;
-          if (xhr.status === 413 || (xhr.responseText && (xhr.responseText.includes('413') || xhr.responseText.includes('FUNCTION_PAYLOAD_TOO_LARGE')))) {
-            msg = 'File exceeds 4.5 MB limit';
-          } else if (xhr.status === 504 || xhr.status === 502) {
-            msg = 'Storage server temporarily busy';
-          }
-          const err = new Error(msg);
-          err.status = xhr.status;
-          err.rawText = xhr.responseText;
-          reject(err);
+        } catch (e) {
+          reject(new Error(`Storage service error (${xhr.status})`));
         }
       };
 
-      xhr.onerror = () => {
-        const err = new Error('Network error - check your connection');
-        err.status = 0;
-        reject(err);
-      };
+      xhr.onerror = () => reject(new Error('Network connection failed to media storage server'));
+      xhr.ontimeout = () => reject(new Error('Upload to storage timed out'));
       xhr.send(formData);
+    });
+
+    if (onProgress) onProgress(95);
+
+    const hostedUrl = cloudflareRes.url || cloudflareRes.data;
+    if (!hostedUrl) {
+      throw new Error('Storage service returned invalid URL');
+    }
+
+    // 2. Fast lightweight JSON metadata save to Vercel MongoDB
+    const recordPayload = {
+      name: file.name,
+      size: cloudflareRes.size || file.size,
+      mime_type: cloudflareRes.media_type || file.type || 'application/octet-stream',
+      hosted_url: hostedUrl,
+      folder_id: folderId && folderId !== 'root' ? folderId : null,
+      is_public: isPublic
+    };
+
+    const savedRes = await this.request('/api/files/record', {
+      method: 'POST',
+      body: recordPayload
+    });
+
+    if (onProgress) onProgress(100);
+
+    return savedRes;
+  },
+
+  async uploadFiles(files, folderId = null, onProgress = null) {
+    const results = [];
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const res = await this.uploadFileDirect(file, folderId, onProgress);
+      if (res && res.file) {
+        results.push(res.file);
+      }
+    }
+    return { success: true, files: results };
+  },
+
+  async uploadFromUrl(remoteUrl, folderId = null) {
+    if (!remoteUrl) throw new Error('Remote URL is required');
+    const defaultVis = typeof Settings !== 'undefined' ? Settings.preferences.defaultVisibility : 'private';
+    const isPublic = defaultVis === 'public';
+
+    // 1. Fetch & host via Cloudflare Worker
+    const hostEndpoint = this.getHostUrlEndpoint();
+    const targetUrl = `${hostEndpoint}?url=${encodeURIComponent(remoteUrl.trim())}`;
+    const res = await fetch(targetUrl);
+    if (!res.ok) {
+      throw new Error(`Remote download failed (${res.status})`);
+    }
+    const data = await res.json();
+    const hostedUrl = data.url || data.data;
+    if (!hostedUrl) {
+      throw new Error('Storage service failed to mirror remote URL');
+    }
+
+    // 2. Record metadata in MongoDB
+    const recordPayload = {
+      name: data.filename || 'remote_file',
+      size: data.size || 0,
+      mime_type: data.media_type || 'application/octet-stream',
+      hosted_url: hostedUrl,
+      folder_id: folderId && folderId !== 'root' ? folderId : null,
+      is_public: isPublic
+    };
+
+    return this.request('/api/files/record', {
+      method: 'POST',
+      body: recordPayload
     });
   },
 
