@@ -88,6 +88,7 @@ const Drive = {
       this.eventsBound = true;
     }
 
+    this.updateThemeIcon();
     this.reload();
   },
 
@@ -440,6 +441,13 @@ const Drive = {
         chk.innerHTML = isSelected ? Icons.check : '';
       }
     });
+
+    const selectAllChk = document.getElementById('select-all-checkbox');
+    if (selectAllChk) {
+      const isAll = this.files.length > 0 && this.files.every(f => this.selectedFileIds.has(f.id));
+      selectAllChk.classList.toggle('checked', isAll);
+      selectAllChk.innerHTML = isAll ? Icons.check : '';
+    }
   },
 
   updateMultiSelectBar() {
@@ -492,6 +500,320 @@ const Drive = {
     } catch (err) {
       this.showToast(err.message || 'Failed to delete items', 'error');
     }
+  },
+
+  toggleSelectAll(e) {
+    if (e) {
+      e.stopPropagation();
+      e.preventDefault();
+    }
+    const allSelected = this.files.length > 0 && this.files.every(f => this.selectedFileIds.has(f.id));
+    if (allSelected) {
+      this.clearSelection();
+    } else {
+      this.selectedFileIds.clear();
+      this.files.forEach(f => this.selectedFileIds.add(f.id));
+      this.updateMultiSelectBar();
+      this.updateSelectedElementStyles();
+    }
+    const chk = document.getElementById('select-all-checkbox');
+    if (chk) {
+      const isNowAll = this.files.length > 0 && this.files.every(f => this.selectedFileIds.has(f.id));
+      chk.classList.toggle('checked', isNowAll);
+      chk.innerHTML = isNowAll ? Icons.check : '';
+    }
+  },
+
+  async bulkDownloadZip() {
+    const selectedFiles = this.files.filter(f => this.selectedFileIds.has(f.id));
+    if (!selectedFiles.length) {
+      this.showToast('No files selected', 'error');
+      return;
+    }
+
+    if (typeof ShelfieZip === 'undefined' || !ShelfieZip.createZip) {
+      this.showToast('ZIP packaging engine unavailable', 'error');
+      return;
+    }
+
+    this.showToast(`Packaging ${selectedFiles.length} file(s) into ZIP archive...`);
+
+    try {
+      const fileEntries = [];
+      for (const f of selectedFiles) {
+        if (!f.hosted_url) continue;
+        try {
+          const resp = await fetch(f.hosted_url);
+          if (!resp.ok) continue;
+          const blob = await resp.blob();
+          fileEntries.push({
+            name: f.name || 'file.bin',
+            blob: blob,
+            date: f.updated_at ? new Date(f.updated_at) : new Date()
+          });
+        } catch (fetchErr) {
+          console.warn(`Failed to pull blob for ${f.name}:`, fetchErr);
+        }
+      }
+
+      if (!fileEntries.length) {
+        throw new Error('Could not download file contents.');
+      }
+
+      const zipBlob = await ShelfieZip.createZip(fileEntries);
+      const filename = `shelfie-archive-${Date.now()}.zip`;
+      ShelfieZip.downloadBlob(zipBlob, filename);
+      this.showToast(`Downloaded ${fileEntries.length} file(s) as ${filename}!`);
+      this.clearSelection();
+    } catch (err) {
+      this.showToast(err.message || 'Failed to generate ZIP archive', 'error');
+    }
+  },
+
+  // ==========================================
+  // SECURE SHARES (EXPIRING & PIN PROTECTED)
+  // ==========================================
+  openShareFileModal(fileId) {
+    const file = this.files.find(f => f.id === fileId) || this.selectedFile;
+    if (!file) return;
+
+    this.sharingFile = file;
+    const modal = document.getElementById('share-modal');
+    const nameEl = document.getElementById('share-file-name');
+    const metaEl = document.getElementById('share-file-meta');
+    const iconEl = document.getElementById('share-file-icon');
+    const resBox = document.getElementById('share-result-box');
+    const pwdInput = document.getElementById('share-password-input');
+    const burnToggle = document.getElementById('share-burn-toggle');
+    const expirySelect = document.getElementById('share-expiry-select');
+    const genBtn = document.getElementById('share-generate-btn');
+
+    if (nameEl) nameEl.textContent = file.name;
+    if (metaEl) metaEl.textContent = `${(file.category || 'file').toUpperCase()} • ${Auth.formatBytes(file.size || 0)}`;
+    if (iconEl && typeof getFileIcon === 'function') {
+      iconEl.innerHTML = getFileIcon(file.category, file.extension);
+    }
+
+    if (pwdInput) pwdInput.value = '';
+    if (burnToggle) burnToggle.checked = false;
+    if (expirySelect) expirySelect.value = '24';
+    if (resBox) resBox.style.display = 'none';
+    if (genBtn) {
+      genBtn.disabled = false;
+      genBtn.textContent = 'Generate Link';
+    }
+
+    if (modal) modal.style.display = 'flex';
+  },
+
+  closeShareModal() {
+    const modal = document.getElementById('share-modal');
+    if (modal) modal.style.display = 'none';
+    this.sharingFile = null;
+  },
+
+  async generateSecureShareLink() {
+    if (!this.sharingFile) return;
+
+    const expirySelect = document.getElementById('share-expiry-select');
+    const burnToggle = document.getElementById('share-burn-toggle');
+    const pwdInput = document.getElementById('share-password-input');
+    const genBtn = document.getElementById('share-generate-btn');
+    const resBox = document.getElementById('share-result-box');
+    const urlInput = document.getElementById('share-generated-url');
+    const badgesBox = document.getElementById('share-result-badges');
+
+    const expiresHours = parseInt(expirySelect?.value || '24', 10);
+    const burnAfterReading = Boolean(burnToggle?.checked);
+    const password = pwdInput ? pwdInput.value.trim() : '';
+
+    if (genBtn) {
+      genBtn.disabled = true;
+      genBtn.textContent = 'Generating...';
+    }
+
+    try {
+      const res = await API.createShare(this.sharingFile.id, expiresHours, burnAfterReading, password);
+      if (!res.success) {
+        throw new Error(res.error || 'Failed to create secure share link');
+      }
+
+      const shareUrl = res.share_url || `${window.location.origin}/share/${res.token}`;
+      if (urlInput) urlInput.value = shareUrl;
+
+      if (badgesBox) {
+        let badgesHtml = '';
+        if (burnAfterReading) {
+          badgesHtml += `<span class="share-badge-pill burn">${Icons.flame || ''} 1-Time Burn</span>`;
+        }
+        if (password) {
+          badgesHtml += `<span class="share-badge-pill pin">${Icons.lock || ''} Password Protected</span>`;
+        }
+        if (expiresHours > 0) {
+          badgesHtml += `<span class="share-badge-pill expiry">${Icons.lock_clock || ''} Expires in ${expiresHours}h</span>`;
+        } else {
+          badgesHtml += `<span class="share-badge-pill">Never expires</span>`;
+        }
+        badgesBox.innerHTML = badgesHtml;
+      }
+
+      if (resBox) resBox.style.display = 'block';
+      this.showToast('Secure share link generated!');
+    } catch (err) {
+      this.showToast(err.message || 'Failed to generate secure link', 'error');
+    } finally {
+      if (genBtn) {
+        genBtn.disabled = false;
+        genBtn.textContent = 'Regenerate Link';
+      }
+    }
+  },
+
+  copyShareUrl() {
+    const input = document.getElementById('share-generated-url');
+    if (!input || !input.value) return;
+    navigator.clipboard.writeText(input.value).then(() => {
+      this.showToast('Secure link copied to clipboard!');
+    }).catch(() => {
+      input.select();
+      document.execCommand('copy');
+      this.showToast('Secure link copied!');
+    });
+  },
+
+  // ==========================================
+  // ZERO-KNOWLEDGE E2EE DECRYPTION PROMPT
+  // ==========================================
+  promptE2EEDecrypt(file) {
+    if (!file) return;
+    this.decryptingFile = file;
+    const modal = document.getElementById('e2ee-modal');
+    const passInput = document.getElementById('e2ee-passkey-input');
+    const errBox = document.getElementById('e2ee-error-msg');
+
+    if (passInput) passInput.value = '';
+    if (errBox) errBox.style.display = 'none';
+    if (modal) modal.style.display = 'flex';
+    if (passInput) setTimeout(() => passInput.focus(), 80);
+  },
+
+  closeE2EEModal() {
+    const modal = document.getElementById('e2ee-modal');
+    if (modal) modal.style.display = 'none';
+    this.decryptingFile = null;
+  },
+
+  async submitE2EEDecrypt() {
+    if (!this.decryptingFile) return;
+    const passInput = document.getElementById('e2ee-passkey-input');
+    const errBox = document.getElementById('e2ee-error-msg');
+    const btn = document.getElementById('e2ee-decrypt-btn');
+
+    const passkey = passInput ? passInput.value : '';
+    if (!passkey) {
+      if (errBox) {
+        errBox.textContent = 'Please enter your secret encryption passkey.';
+        errBox.style.display = 'block';
+      }
+      return;
+    }
+
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = 'Decrypting...';
+    }
+
+    try {
+      const resp = await fetch(this.decryptingFile.hosted_url);
+      if (!resp.ok) throw new Error('Failed to retrieve encrypted file blob.');
+      const encryptedBlob = await resp.blob();
+
+      const decryptedBlob = await ShelfieCrypto.decryptBlob(
+        encryptedBlob,
+        passkey,
+        this.decryptingFile.encryption_meta
+      );
+
+      const decryptedUrl = URL.createObjectURL(decryptedBlob);
+      const decryptedFile = Object.assign({}, this.decryptingFile, {
+        hosted_url: decryptedUrl,
+        is_decrypted: true
+      });
+
+      this.closeE2EEModal();
+      this.showToast('File decrypted successfully!');
+      Viewer.open(decryptedFile);
+    } catch (err) {
+      if (errBox) {
+        errBox.textContent = 'Decryption failed: Incorrect passkey or corrupted payload.';
+        errBox.style.display = 'block';
+      }
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = 'Unlock & Decrypt';
+      }
+    }
+  },
+
+  // ==========================================
+  // PROFILE COIN FLIP (VECTOR QR CODE)
+  // ==========================================
+  toggleProfileCoinFlip() {
+    const coin = document.getElementById('profile-avatar-coin');
+    const qrText = document.getElementById('profile-qr-btn-text');
+    if (!coin) return;
+
+    coin.classList.toggle('is-flipped');
+    const isFlipped = coin.classList.contains('is-flipped');
+
+    if (qrText) {
+      qrText.textContent = isFlipped ? 'Profile' : 'QR Code';
+    }
+
+    if (isFlipped) {
+      const qrContainer = document.getElementById('avatar-qr-container');
+      if (qrContainer) {
+        const username = this.profileUsername || Auth.currentUser?.username || '';
+        const profileUrl = `${window.location.origin}/${username}`;
+        if (typeof QRCodeGen !== 'undefined' && QRCodeGen.generateSVG) {
+          qrContainer.innerHTML = QRCodeGen.generateSVG(profileUrl, {
+            size: 76,
+            margin: 1,
+            fg: '#1a73e8',
+            bg: '#ffffff'
+          });
+        }
+      }
+    }
+  },
+
+  // ==========================================
+  // QUICK NAVBAR THEME SWITCH
+  // ==========================================
+  updateThemeIcon() {
+    const iconEl = document.getElementById('topbar-theme-icon');
+    if (!iconEl) return;
+    const currentTheme = document.documentElement.getAttribute('data-theme') || 'system';
+    const isDark = currentTheme === 'dark' || (currentTheme === 'system' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    iconEl.innerHTML = isDark ? Icons.sun : Icons.moon;
+  },
+
+  toggleTheme() {
+    const currentAttr = document.documentElement.getAttribute('data-theme') || 'system';
+    const isDark = currentAttr === 'dark' || (currentAttr === 'system' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    const newTheme = isDark ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', newTheme);
+    try {
+      localStorage.setItem('haul_theme', newTheme);
+    } catch (e) {}
+    this.updateThemeIcon();
+
+    // Sync settings segmented button if present
+    document.querySelectorAll('#pref-theme-segmented .apple-segmented-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.value === newTheme);
+    });
+    this.showToast(`Theme switched to ${newTheme === 'dark' ? 'Dark' : 'Light'} Mode`);
   },
 
   // ==========================================
@@ -1070,12 +1392,17 @@ const Drive = {
         </div>
       `;
     } else {
+      const allSelected = this.files.length > 0 && this.files.every(f => this.selectedFileIds.has(f.id));
       container.innerHTML = `
         <div class="files-table-container">
           <table class="files-table">
             <thead>
               <tr>
-                <th style="width: 38px;"></th>
+                <th style="width: 38px;">
+                  <div id="select-all-checkbox" class="row-select-checkbox ${allSelected ? 'checked' : ''}" onclick="Drive.toggleSelectAll(event)" title="Select all files">
+                    ${allSelected ? Icons.check : ''}
+                  </div>
+                </th>
                 <th>Name</th>
                 <th>Category</th>
                 <th>File Size</th>
@@ -1535,13 +1862,29 @@ const Drive = {
     const isPublic = file.is_public === true;
     const isOwner = Boolean(this.isOwnerMode || (Auth.currentUser && this.profileUsername && Auth.currentUser.username && Auth.currentUser.username.toLowerCase() === this.profileUsername.toLowerCase()));
     const canManage = !this.isPublicMode || isOwner;
+    const ext = (file.extension || '').toLowerCase();
+    const isEditable = ['txt', 'md', 'markdown', 'py', 'js', 'json', 'html', 'css', 'ts', 'sql', 'sh', 'log', 'env'].includes(ext) || file.category === 'code';
+    const isEncrypted = Boolean(file.is_encrypted);
 
     let html = `
       <div class="context-menu-item" onclick="Viewer.open(Drive.selectedFile)">
         ${Icons.info} <span>Preview</span>
       </div>
+      ${isEditable && canManage ? `
+        <div class="context-menu-item" onclick="Viewer.open(Drive.selectedFile); setTimeout(() => Viewer.toggleEditMode(), 200);">
+          ${Icons.edit || Icons.rename} <span>Edit Content</span>
+        </div>
+      ` : ''}
+      ${isEncrypted ? `
+        <div class="context-menu-item" onclick="Drive.promptE2EEDecrypt(Drive.selectedFile)">
+          ${Icons.lock} <span>Decrypt & View</span>
+        </div>
+      ` : ''}
       <div class="context-menu-item" onclick="Drive.shareFile('${file.id}')">
         ${Icons.share} <span>Share</span>
+      </div>
+      <div class="context-menu-item" onclick="Drive.openShareFileModal('${file.id}')">
+        ${Icons.lock_clock || Icons.lock} <span>Secure Share (Expiring/PIN)</span>
       </div>
       <div class="context-menu-item" onclick="Drive.copyDirectLink('${file.hosted_url}', '${file.name.replace(/'/g, "\\'")}')">
         ${Icons.link} <span>Copy direct link</span>
@@ -1659,6 +2002,8 @@ const Drive = {
     if (top + menuHeight > viewportHeight - 16) {
       top = Math.max(16, clickY - menuHeight);
     }
+    menu.style.maxHeight = `${viewportHeight - 32}px`;
+    menu.style.overflowY = 'auto';
 
     let left = clickX;
     // Keep menu within screen right boundary

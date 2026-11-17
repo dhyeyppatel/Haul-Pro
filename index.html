@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Haul Pro - Cloud Storage & Media Platform</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'><defs><linearGradient id='g' x1='4' y1='4' x2='36' y2='36' gradientUnits='userSpaceOnUse'><stop offset='0%25' stop-color='%231a73e8'/><stop offset='100%25' stop-color='%230d47a1'/></linearGradient></defs><rect x='3' y='3' width='34' height='34' rx='10' fill='url(%23g)'/><path d='M12 11V29M28 11V29M12 20H28' stroke='white' stroke-width='3.5' stroke-linecap='round'/><circle cx='20' cy='13.5' r='2.2' fill='%2300e5ff'/></svg>">
-  <link rel="stylesheet" href="/css/drive.css?v=2.2">
-  <link rel="stylesheet" href="/css/viewer.css?v=2.2">
-  <link rel="stylesheet" href="/css/auth.css?v=2.2">
+  <link rel="stylesheet" href="/css/drive.css?v=2.3">
+  <link rel="stylesheet" href="/css/viewer.css?v=2.3">
+  <link rel="stylesheet" href="/css/auth.css?v=2.3">
   <script>
     (function() {
       try {
@@ -67,6 +67,9 @@
 
     <div class="topbar-right">
       <button id="topbar-signin-btn" class="topbar-signin-btn" style="display: none;">Sign in</button>
+      <button id="topbar-theme-btn" class="icon-btn topbar-theme-btn" title="Toggle Light / Dark Theme" onclick="Drive.toggleTheme()">
+        <span id="topbar-theme-icon"></span>
+      </button>
       <button id="topbar-alerts-btn" class="icon-btn topbar-alerts-btn" title="Recent Activity & Alerts" onclick="Drive.switchNav('activity')">
         <span id="topbar-alerts-icon"></span>
         <span id="topbar-alerts-badge" class="alert-pulse-dot" style="display: none;"></span>
@@ -218,16 +221,29 @@
       <!-- Instagram-Style Profile Header (Matches user wireframe) -->
       <div id="public-profile-banner" class="instagram-profile-card" style="display: none;">
         <div class="insta-profile-header">
-          <!-- Circular Profile Image with change overlay if owner -->
-          <div class="insta-avatar-container">
-            <div id="public-profile-avatar" class="insta-profile-avatar">
-              <span id="public-avatar-initial">U</span>
-              <img id="public-avatar-img" class="insta-avatar-img" style="display: none;" alt="" referrerpolicy="no-referrer">
+          <!-- 3D Coin-Flip Profile Avatar (Avatar on Front, QR Code on Back) -->
+          <div class="insta-avatar-coin" id="profile-avatar-coin" onclick="Drive.toggleProfileCoinFlip()" title="Click avatar to flip for QR Code">
+            <div class="coin-flipper">
+              <!-- Coin Front: Profile Image -->
+              <div class="coin-front">
+                <div id="public-profile-avatar" class="insta-profile-avatar">
+                  <span id="public-avatar-initial">U</span>
+                  <img id="public-avatar-img" class="insta-avatar-img" style="display: none;" alt="" referrerpolicy="no-referrer">
+                </div>
+                <div class="coin-qr-badge" title="Flip for QR Code">
+                  <span id="coin-qr-icon"></span>
+                </div>
+                <button id="insta-change-avatar-btn" class="insta-avatar-change-btn" title="Change profile photo" style="display: none;" onclick="event.stopPropagation()">
+                  <span id="insta-camera-icon"></span>
+                </button>
+                <input type="file" id="insta-avatar-file-input" accept="image/*" style="display: none;">
+              </div>
+              <!-- Coin Back: Vector QR Code -->
+              <div class="coin-back">
+                <div id="avatar-qr-container" class="avatar-qr-container"></div>
+                <div class="coin-flip-back-hint">Click to flip</div>
+              </div>
             </div>
-            <button id="insta-change-avatar-btn" class="insta-avatar-change-btn" title="Change profile photo" style="display: none;">
-              <span id="insta-camera-icon"></span>
-            </button>
-            <input type="file" id="insta-avatar-file-input" accept="image/*" style="display: none;">
           </div>
 
           <div class="insta-meta-container">
@@ -248,6 +264,10 @@
               <button id="copy-public-profile-link-btn" class="profile-action-btn">
                 <span id="profile-share-icon-holder"></span>
                 <span>Share Profile</span>
+              </button>
+              <button id="profile-flip-qr-btn" class="profile-action-btn" onclick="Drive.toggleProfileCoinFlip()" title="Flip profile to scan QR code">
+                <span id="profile-qr-btn-icon"></span>
+                <span id="profile-qr-btn-text">QR Code</span>
               </button>
               <button id="owner-back-drive-btn" class="profile-action-btn primary" style="display: none;">
                 <span>Back to My Drive</span>
@@ -368,6 +388,14 @@
       </div>
       <div id="viewer-mode-switch" class="viewer-mode-switch" style="display: none;"></div>
       <div class="viewer-actions">
+        <button id="viewer-edit-btn" class="viewer-btn" title="Edit document or code" style="display: none;" onclick="Viewer.toggleEditMode()">
+          <span id="viewer-edit-icon"></span>
+          <span>Edit</span>
+        </button>
+        <button id="viewer-save-btn" class="viewer-btn primary" title="Save changes (Ctrl+S)" style="display: none;" onclick="Viewer.saveEditedContent()">
+          <span id="viewer-save-icon"></span>
+          <span>Save</span>
+        </button>
         <button id="viewer-download-btn" class="viewer-btn" title="Download">
           <span id="viewer-download-icon"></span>
           <span>Download</span>
@@ -385,6 +413,150 @@
       <button id="viewer-zoom-out" class="viewer-btn" title="Zoom out">-</button>
       <button id="viewer-zoom-reset" class="viewer-btn" title="Reset zoom" style="font-size: 11px;">100%</button>
       <button id="viewer-zoom-in" class="viewer-btn" title="Zoom in">+</button>
+    </div>
+  </div>
+
+  <!-- FLOATING AUDIO WAVEFORM MINI PLAYER -->
+  <div id="audio-mini-player" class="audio-mini-player" style="display: none;">
+    <audio id="global-audio-element" preload="metadata"></audio>
+    <div class="mini-player-left">
+      <div class="mini-player-art">
+        <span id="mini-player-music-icon"></span>
+      </div>
+      <div class="mini-player-details">
+        <div id="mini-player-title" class="mini-player-title">Audio Track</div>
+        <div id="mini-player-time" class="mini-player-time">0:00 / 0:00</div>
+      </div>
+    </div>
+    <div class="mini-player-center">
+      <div class="mini-player-controls">
+        <button type="button" class="mini-ctrl-btn" id="mini-btn-back" title="Rewind 10s" onclick="Viewer.audioRewind(10)">
+          <span id="mini-icon-back"></span>
+        </button>
+        <button type="button" class="mini-ctrl-btn primary" id="mini-btn-play" title="Play / Pause" onclick="Viewer.audioTogglePlay()">
+          <span id="mini-icon-play"></span>
+        </button>
+        <button type="button" class="mini-ctrl-btn" id="mini-btn-forward" title="Forward 10s" onclick="Viewer.audioForward(10)">
+          <span id="mini-icon-forward"></span>
+        </button>
+      </div>
+      <div class="mini-waveform-wrapper">
+        <div class="mini-waveform-bars" id="mini-waveform-bars">
+          <span class="w-bar"></span><span class="w-bar"></span><span class="w-bar"></span><span class="w-bar"></span>
+          <span class="w-bar"></span><span class="w-bar"></span><span class="w-bar"></span><span class="w-bar"></span>
+          <span class="w-bar"></span><span class="w-bar"></span><span class="w-bar"></span><span class="w-bar"></span>
+          <span class="w-bar"></span><span class="w-bar"></span><span class="w-bar"></span><span class="w-bar"></span>
+        </div>
+        <input type="range" id="mini-player-scrubber" class="mini-scrubber" min="0" max="100" value="0" oninput="Viewer.audioSeek(this.value)">
+      </div>
+    </div>
+    <div class="mini-player-right">
+      <button type="button" class="mini-ctrl-btn" id="mini-btn-mute" title="Mute / Unmute" onclick="Viewer.audioToggleMute()">
+        <span id="mini-icon-volume"></span>
+      </button>
+      <button type="button" class="mini-ctrl-btn" id="mini-btn-close" title="Close player" onclick="Viewer.audioClose()">
+        <span id="mini-icon-close"></span>
+      </button>
+    </div>
+  </div>
+
+  <!-- SECURE SHARE MODAL (Expiring Links & Password Protection) -->
+  <div id="share-modal" class="modal-backdrop" style="display: none;">
+    <div class="modal-card apple-modal share-modal-card">
+      <div class="modal-header apple-modal-header">
+        <div class="settings-header-left">
+          <span id="share-modal-title-icon"></span>
+          <h3 class="modal-title" id="share-modal-title">Share Securely</h3>
+        </div>
+        <button type="button" class="icon-btn apple-close-btn" onclick="Drive.closeShareModal()" title="Close">
+          <span id="share-close-icon"></span>
+        </button>
+      </div>
+      <div class="modal-body apple-modal-body">
+        <div class="share-file-preview">
+          <span id="share-file-icon"></span>
+          <div class="share-file-info">
+            <div id="share-file-name" class="share-file-name">filename.ext</div>
+            <div id="share-file-meta" class="share-file-meta">Document • 12 KB</div>
+          </div>
+        </div>
+
+        <div class="apple-group">
+          <div class="apple-group-header">LINK SECURITY & EXPIRATION</div>
+          
+          <div class="apple-cell">
+            <div class="apple-cell-info">
+              <div class="apple-cell-title">Link Expiration</div>
+              <div class="apple-cell-sub">Automatically disable link after time elapsed</div>
+            </div>
+            <select id="share-expiry-select" class="apple-select">
+              <option value="0">Never expires</option>
+              <option value="1">1 Hour</option>
+              <option value="24" selected>24 Hours</option>
+              <option value="168">7 Days</option>
+              <option value="720">30 Days</option>
+            </select>
+          </div>
+
+          <div class="apple-cell">
+            <div class="apple-cell-info">
+              <div class="apple-cell-title">Burn After Reading</div>
+              <div class="apple-cell-sub">Self-destruct link immediately after 1 view</div>
+            </div>
+            <label class="apple-switch">
+              <input type="checkbox" id="share-burn-toggle">
+              <span class="apple-switch-slider"></span>
+            </label>
+          </div>
+
+          <div class="apple-cell">
+            <div class="apple-cell-info">
+              <div class="apple-cell-title">Password Protection</div>
+              <div class="apple-cell-sub">Require PIN or password to unlock file</div>
+            </div>
+            <input type="password" id="share-password-input" class="apple-input-sm" placeholder="Optional password" autocomplete="new-password">
+          </div>
+        </div>
+
+        <div id="share-result-box" class="share-result-box" style="display: none;">
+          <label class="share-result-label">Generated Secure Link</label>
+          <div class="share-url-row">
+            <input type="text" id="share-generated-url" class="share-url-input" readonly>
+            <button type="button" class="btn-filled" id="share-copy-btn" onclick="Drive.copyShareUrl()">Copy</button>
+          </div>
+          <div id="share-result-badges" class="share-result-badges"></div>
+        </div>
+      </div>
+      <div class="modal-actions apple-modal-actions" id="share-modal-actions">
+        <button type="button" class="btn-text" onclick="Drive.closeShareModal()">Cancel</button>
+        <button type="button" class="btn-filled" id="share-generate-btn" onclick="Drive.generateSecureShareLink()">Generate Link</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- E2EE PASSKEY PROMPT MODAL -->
+  <div id="e2ee-modal" class="modal-backdrop" style="display: none;">
+    <div class="modal-card apple-modal" style="max-width: 440px;">
+      <div class="modal-header apple-modal-header">
+        <div class="settings-header-left">
+          <span id="e2ee-modal-icon"></span>
+          <h3 class="modal-title">Encrypted File</h3>
+        </div>
+        <button type="button" class="icon-btn apple-close-btn" onclick="Drive.closeE2EEModal()" title="Close">
+          <span id="e2ee-close-icon"></span>
+        </button>
+      </div>
+      <div class="modal-body apple-modal-body">
+        <p class="apple-cell-sub" style="margin-bottom: 14px;">This file is protected with Zero-Knowledge AES-GCM-256 encryption. Enter your secret passkey to decrypt it locally in your browser.</p>
+        <div class="form-row">
+          <input type="password" id="e2ee-passkey-input" class="form-input" placeholder="Enter encryption passkey" autocomplete="current-password">
+        </div>
+        <div id="e2ee-error-msg" class="auth-error" style="display: none;"></div>
+      </div>
+      <div class="modal-actions apple-modal-actions">
+        <button type="button" class="btn-text" onclick="Drive.closeE2EEModal()">Cancel</button>
+        <button type="button" class="btn-filled" id="e2ee-decrypt-btn" onclick="Drive.submitE2EEDecrypt()">Unlock & Decrypt</button>
+      </div>
     </div>
   </div>
 
@@ -580,6 +752,10 @@
       <span id="multi-select-count" class="multi-select-count">0 items selected</span>
     </div>
     <div class="multi-select-actions">
+      <button type="button" class="multi-action-btn" onclick="Drive.bulkDownloadZip()" title="Download selected files as a ZIP archive">
+        <span id="multi-download-icon"></span>
+        <span>Download ZIP</span>
+      </button>
       <button type="button" class="multi-action-btn" onclick="Drive.bulkSetVisibility(true)" title="Publish selected files">
         <span id="multi-globe-icon"></span>
         <span>Make Public</span>
@@ -633,6 +809,10 @@
         <button type="button" class="settings-nav-item" data-tab="security">
           <span id="settings-nav-security-icon"></span>
           <span data-i18n="security">Security</span>
+        </button>
+        <button type="button" class="settings-nav-item" data-tab="webhooks">
+          <span id="settings-nav-webhooks-icon"></span>
+          <span>Webhooks</span>
         </button>
         <button type="button" class="settings-nav-item" data-tab="legal">
           <span id="settings-nav-legal-icon"></span>
@@ -967,6 +1147,46 @@
             </div>
           </div>
         </div>
+
+        <!-- TAB: WEBHOOKS -->
+        <div id="settings-tab-webhooks" class="settings-tab-pane">
+          <div class="apple-group">
+            <div class="apple-group-header">NEW WEBHOOK INTEGRATION</div>
+            <div class="webhook-form-container" style="padding: 16px 20px;">
+              <p class="apple-cell-sub" style="margin-bottom: 14px;">Receive real-time HTTP POST notifications when events happen on your cloud drive. Compatible with Discord, Slack, and custom servers.</p>
+              <div class="form-row" style="margin-bottom: 12px;">
+                <label class="form-label" style="display:block; font-size:12px; font-weight:600; margin-bottom:4px; color:var(--text-secondary);">Webhook Name</label>
+                <input type="text" id="webhook-name-input" class="form-input" placeholder="e.g. Discord Bot, Sync Server" style="width:100%; padding:9px 12px; border-radius:8px; border:1px solid var(--border-color); background:var(--bg-secondary); color:var(--text-primary); font-size:13px;">
+              </div>
+              <div class="form-row" style="margin-bottom: 12px;">
+                <label class="form-label" style="display:block; font-size:12px; font-weight:600; margin-bottom:4px; color:var(--text-secondary);">Payload URL</label>
+                <input type="url" id="webhook-url-input" class="form-input" placeholder="https://discord.com/api/webhooks/... or https://api.mysite.com/hook" style="width:100%; padding:9px 12px; border-radius:8px; border:1px solid var(--border-color); background:var(--bg-secondary); color:var(--text-primary); font-size:13px;">
+              </div>
+              <div class="form-row" style="margin-bottom: 14px;">
+                <label class="form-label" style="display:block; font-size:12px; font-weight:600; margin-bottom:4px; color:var(--text-secondary);">Secret Key (Optional HMAC-SHA256 signature in X-Shelfie-Signature)</label>
+                <input type="text" id="webhook-secret-input" class="form-input" placeholder="Leave empty to auto-generate" style="width:100%; padding:9px 12px; border-radius:8px; border:1px solid var(--border-color); background:var(--bg-secondary); color:var(--text-primary); font-size:13px;">
+              </div>
+              <div class="form-row" style="margin-bottom: 16px;">
+                <label class="form-label" style="display:block; font-size:12px; font-weight:600; margin-bottom:6px; color:var(--text-secondary);">Event Triggers</label>
+                <div style="display: flex; gap: 16px; flex-wrap: wrap;">
+                  <label style="font-size: 13px; display: flex; align-items: center; gap: 6px; cursor: pointer;"><input type="checkbox" id="wh-evt-upload" checked> File Uploaded</label>
+                  <label style="font-size: 13px; display: flex; align-items: center; gap: 6px; cursor: pointer;"><input type="checkbox" id="wh-evt-delete" checked> File Deleted</label>
+                  <label style="font-size: 13px; display: flex; align-items: center; gap: 6px; cursor: pointer;"><input type="checkbox" id="wh-evt-share" checked> File Shared</label>
+                </div>
+              </div>
+              <div style="display: flex; justify-content: flex-end;">
+                <button type="button" class="btn-filled" onclick="Settings.saveWebhook()">Save Webhook</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="apple-group" style="margin-top: 20px;">
+            <div class="apple-group-header">ACTIVE WEBHOOKS</div>
+            <div id="webhooks-list" style="padding: 8px 16px;">
+              <div class="empty-state-sm" style="color: var(--text-secondary); font-size: 13px; padding: 12px 0;">Loading webhooks...</div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -1032,13 +1252,16 @@
   <div id="toast-container" class="toast-container"></div>
 
   <!-- SCRIPTS -->
-  <script src="/js/icons.js?v=2.2"></script>
-  <script src="/js/api.js?v=2.2"></script>
-  <script src="/js/auth.js?v=2.2"></script>
-  <script src="/js/viewer.js?v=2.2"></script>
-  <script src="/js/uploader.js?v=2.2"></script>
-  <script src="/js/settings.js?v=2.2"></script>
-  <script src="/js/drive.js?v=2.2"></script>
+  <script src="/js/icons.js?v=2.3"></script>
+  <script src="/js/qr.js?v=2.3"></script>
+  <script src="/js/zip.js?v=2.3"></script>
+  <script src="/js/crypto.js?v=2.3"></script>
+  <script src="/js/api.js?v=2.3"></script>
+  <script src="/js/auth.js?v=2.3"></script>
+  <script src="/js/viewer.js?v=2.3"></script>
+  <script src="/js/uploader.js?v=2.3"></script>
+  <script src="/js/settings.js?v=2.3"></script>
+  <script src="/js/drive.js?v=2.3"></script>
 
   <!-- ICON INITIALIZER -->
   <script>
@@ -1062,6 +1285,59 @@
       document.getElementById('viewer-download-icon').innerHTML = Icons.download;
       document.getElementById('viewer-link-icon').innerHTML = Icons.link;
       document.getElementById('toggle-view-btn').innerHTML = Icons.view_list;
+
+      // Theme toggle icon
+      const themeIcon = document.getElementById('topbar-theme-icon');
+      if (themeIcon) {
+        const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+        themeIcon.innerHTML = isDark ? Icons.sun : Icons.moon;
+      }
+
+      // Coin & QR icons
+      const coinQrIcon = document.getElementById('coin-qr-icon');
+      if (coinQrIcon) coinQrIcon.innerHTML = Icons.qr_code;
+      const profileQrBtnIcon = document.getElementById('profile-qr-btn-icon');
+      if (profileQrBtnIcon) profileQrBtnIcon.innerHTML = Icons.qr_code;
+
+      // Viewer Edit & Save icons
+      const viewerEditIcon = document.getElementById('viewer-edit-icon');
+      if (viewerEditIcon) viewerEditIcon.innerHTML = Icons.edit;
+      const viewerSaveIcon = document.getElementById('viewer-save-icon');
+      if (viewerSaveIcon) viewerSaveIcon.innerHTML = Icons.save;
+
+      // Mini Player icons
+      const miniMusic = document.getElementById('mini-player-music-icon');
+      if (miniMusic) miniMusic.innerHTML = Icons.music;
+      const miniBack = document.getElementById('mini-icon-back');
+      if (miniBack) miniBack.innerHTML = Icons.skip_back;
+      const miniPlay = document.getElementById('mini-icon-play');
+      if (miniPlay) miniPlay.innerHTML = Icons.play;
+      const miniFwd = document.getElementById('mini-icon-forward');
+      if (miniFwd) miniFwd.innerHTML = Icons.skip_forward;
+      const miniVol = document.getElementById('mini-icon-volume');
+      if (miniVol) miniVol.innerHTML = Icons.volume;
+      const miniClose = document.getElementById('mini-icon-close');
+      if (miniClose) miniClose.innerHTML = Icons.close;
+
+      // Secure Share & E2EE icons
+      const shareModalTitleIcon = document.getElementById('share-modal-title-icon');
+      if (shareModalTitleIcon) shareModalTitleIcon.innerHTML = Icons.lock_clock;
+      const shareCloseIcon = document.getElementById('share-close-icon');
+      if (shareCloseIcon) shareCloseIcon.innerHTML = Icons.close;
+      const shareFileIcon = document.getElementById('share-file-icon');
+      if (shareFileIcon) shareFileIcon.innerHTML = Icons.file_generic;
+      const e2eeModalIcon = document.getElementById('e2ee-modal-icon');
+      if (e2eeModalIcon) e2eeModalIcon.innerHTML = Icons.shield;
+      const e2eeCloseIcon = document.getElementById('e2ee-close-icon');
+      if (e2eeCloseIcon) e2eeCloseIcon.innerHTML = Icons.close;
+
+      // Multi-select ZIP download icon
+      const multiDownload = document.getElementById('multi-download-icon');
+      if (multiDownload) multiDownload.innerHTML = Icons.archive_zip;
+
+      // Webhooks Nav Icon
+      const whNavIcon = document.getElementById('settings-nav-webhooks-icon');
+      if (whNavIcon) whNavIcon.innerHTML = Icons.webhook;
 
       const profileGlobe = document.getElementById('profile-globe-icon');
       if (profileGlobe) profileGlobe.innerHTML = Icons.globe;

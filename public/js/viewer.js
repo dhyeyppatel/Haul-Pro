@@ -4,6 +4,7 @@ const Viewer = {
   activeFile: null,
   activeRawText: '',
   activeMode: 'preview', // 'preview' or 'raw'
+  isEditMode: false,
   isWordWrapped: false,
   currentZoom: 1,
   panX: 0,
@@ -11,6 +12,7 @@ const Viewer = {
   isPanning: false,
   startX: 0,
   startY: 0,
+  isAudioPlaying: false,
 
   init() {
     const closeBtn = document.getElementById('viewer-close-btn');
@@ -26,6 +28,15 @@ const Viewer = {
     if (zoomInBtn) zoomInBtn.addEventListener('click', () => this.zoom(0.2));
     if (zoomOutBtn) zoomOutBtn.addEventListener('click', () => this.zoom(-0.2));
     if (zoomResetBtn) zoomResetBtn.addEventListener('click', () => this.resetZoom());
+
+    // Audio element global events
+    const audioEl = document.getElementById('global-audio-element');
+    if (audioEl) {
+      audioEl.addEventListener('timeupdate', () => this.onAudioTimeUpdate());
+      audioEl.addEventListener('ended', () => this.onAudioEnded());
+      audioEl.addEventListener('play', () => this.onAudioPlayState(true));
+      audioEl.addEventListener('pause', () => this.onAudioPlayState(false));
+    }
 
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape' && this.isOpen()) {
@@ -73,9 +84,17 @@ const Viewer = {
 
   open(file) {
     if (!file) return;
+
+    // Check if file is E2EE encrypted
+    if (file.is_encrypted) {
+      Drive.promptE2EEDecrypt(file);
+      return;
+    }
+
     this.activeFile = file;
     this.activeRawText = '';
     this.activeMode = 'preview';
+    this.isEditMode = false;
     this.isWordWrapped = false;
     this.currentZoom = 1;
     this.panX = 0;
@@ -87,6 +106,8 @@ const Viewer = {
     const modeSwitch = document.getElementById('viewer-mode-switch');
     const bodyEl = document.getElementById('viewer-body');
     const zoomControls = document.getElementById('viewer-zoom-controls');
+    const editBtn = document.getElementById('viewer-edit-btn');
+    const saveBtn = document.getElementById('viewer-save-btn');
 
     if (filenameEl) filenameEl.textContent = file.name || 'File Preview';
     if (bodyEl) {
@@ -101,6 +122,12 @@ const Viewer = {
       modeSwitch.style.display = 'none';
       modeSwitch.innerHTML = '';
     }
+    if (editBtn) {
+      editBtn.style.display = 'none';
+      const lbl = editBtn.querySelector('span:not([id])');
+      if (lbl) lbl.textContent = 'Edit';
+    }
+    if (saveBtn) saveBtn.style.display = 'none';
 
     const ext = (file.extension || (file.name ? file.name.split('.').pop() : '')).toLowerCase();
     const url = file.hosted_url || '';
@@ -120,6 +147,12 @@ const Viewer = {
     if (metaBadge) {
       metaBadge.style.display = 'inline-flex';
       metaBadge.textContent = `${ext.toUpperCase()} • ${Auth.formatBytes(file.size || 0)}`;
+    }
+
+    // Allow inline editing for text/markdown/code if owner
+    const canEdit = !Drive.isPublicMode || Drive.isOwnerMode;
+    if (editBtn && canEdit && (isMarkdown || isCode || isPlainText)) {
+      editBtn.style.display = 'inline-flex';
     }
 
     // 1. IMAGE PREVIEW
@@ -189,18 +222,17 @@ const Viewer = {
         </video>
       `;
     } 
-    // 9. AUDIO PLAYER
+    // 9. AUDIO PLAYER & FLOATING MINI PLAYER
     else if (isAudio) {
+      this.audioPlay(file);
       bodyEl.innerHTML = `
-        <div class="viewer-audio-card">
-          <div class="viewer-audio-icon">
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>
+        <div class="viewer-audio-card" style="text-align: center; padding: 40px 24px; max-width: 440px; margin: auto; background: rgba(255,255,255,0.06); border-radius: 18px; border: 1px solid rgba(255,255,255,0.12); box-shadow: 0 16px 40px rgba(0,0,0,0.5);">
+          <div class="viewer-audio-icon" style="background: rgba(26, 115, 232, 0.2); color: #60a5fa; width: 68px; height: 68px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px;">
+            ${Icons.music}
           </div>
-          <div class="viewer-audio-title">${this.escapeHtml(file.name)}</div>
-          <audio class="viewer-audio-player" controls autoplay>
-            <source src="${url}" type="${file.mime_type || 'audio/mpeg'}">
-            Your browser does not support audio playback.
-          </audio>
+          <div class="viewer-audio-title" style="font-size: 16px; font-weight: 700; margin-bottom: 6px; color: #fff;">${this.escapeHtml(file.name)}</div>
+          <div style="font-size: 12px; color: #9aa0a6; margin-bottom: 24px;">Active in Floating Audio Mini Player</div>
+          <button type="button" class="btn-filled" onclick="Viewer.close()" style="border-radius: 20px; padding: 10px 28px; font-size: 13px;">Dock & Continue Browsing</button>
         </div>
       `;
     } 
@@ -813,5 +845,212 @@ const Viewer = {
     navigator.clipboard.writeText(this.activeFile.hosted_url).then(() => {
       alert('Direct link copied to clipboard: ' + this.activeFile.hosted_url);
     });
+  },
+
+  // ==========================================
+  // INLINE CODE & DOCUMENT EDITING
+  // ==========================================
+  toggleEditMode() {
+    this.isEditMode = !this.isEditMode;
+    const editBtn = document.getElementById('viewer-edit-btn');
+    const saveBtn = document.getElementById('viewer-save-btn');
+    const bodyEl = document.getElementById('viewer-body');
+    const lbl = editBtn?.querySelector('span:not([id])');
+
+    if (this.isEditMode) {
+      if (lbl) lbl.textContent = 'Cancel';
+      if (saveBtn) saveBtn.style.display = 'inline-flex';
+
+      bodyEl.innerHTML = `
+        <div class="viewer-editor-container">
+          <div class="editor-gutter" id="editor-gutter"></div>
+          <textarea class="editor-textarea" id="editor-textarea" spellcheck="false"></textarea>
+        </div>
+      `;
+
+      const textarea = document.getElementById('editor-textarea');
+      const gutter = document.getElementById('editor-gutter');
+      textarea.value = this.activeRawText || '';
+      this.updateGutter();
+
+      textarea.addEventListener('input', () => this.updateGutter());
+      textarea.addEventListener('scroll', () => {
+        gutter.scrollTop = textarea.scrollTop;
+      });
+
+      // Handle Tab & Save hotkey (Ctrl+S / Cmd+S)
+      textarea.addEventListener('keydown', (e) => {
+        if (e.key === 'Tab') {
+          e.preventDefault();
+          const start = textarea.selectionStart;
+          const end = textarea.selectionEnd;
+          textarea.value = textarea.value.substring(0, start) + '  ' + textarea.value.substring(end);
+          textarea.selectionStart = textarea.selectionEnd = start + 2;
+          this.updateGutter();
+        } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+          e.preventDefault();
+          this.saveEditedContent();
+        }
+      });
+      textarea.focus();
+    } else {
+      if (lbl) lbl.textContent = 'Edit';
+      if (saveBtn) saveBtn.style.display = 'none';
+
+      // Re-render view mode
+      const ext = (this.activeFile.extension || '').toLowerCase();
+      if (['md', 'markdown'].includes(ext)) {
+        this.renderMarkdownView(bodyEl, this.activeRawText, this.activeFile);
+      } else if (this.activeFile.category === 'code' || ['js', 'ts', 'py', 'json', 'html', 'css', 'sql', 'sh'].includes(ext)) {
+        this.renderCodeView(bodyEl, this.activeRawText, this.activeFile, ext);
+      } else {
+        this.renderPlainTextView(bodyEl, this.activeRawText, this.activeFile, ext);
+      }
+    }
+  },
+
+  updateGutter() {
+    const textarea = document.getElementById('editor-textarea');
+    const gutter = document.getElementById('editor-gutter');
+    if (!textarea || !gutter) return;
+    const lines = (textarea.value || '').split('\n').length;
+    let numbers = '';
+    for (let i = 1; i <= lines; i++) {
+      numbers += i + '\n';
+    }
+    gutter.textContent = numbers;
+  },
+
+  async saveEditedContent() {
+    const textarea = document.getElementById('editor-textarea');
+    const saveBtn = document.getElementById('viewer-save-btn');
+    if (!textarea || !this.activeFile) return;
+
+    const newText = textarea.value;
+    const origHtml = saveBtn?.innerHTML;
+    if (saveBtn) {
+      saveBtn.disabled = true;
+      saveBtn.textContent = 'Saving...';
+    }
+
+    try {
+      const res = await API.post('/api/files/save-content', {
+        file_id: this.activeFile.id,
+        content: newText
+      });
+
+      if (res && res.file) {
+        this.activeFile = res.file;
+        this.activeRawText = newText;
+        Drive.showToast('File content saved successfully!');
+        this.toggleEditMode(); // Reverts to preview
+        Drive.reload(); // Refresh drive storage and modified date
+      } else {
+        throw new Error(res.error || 'Failed to save changes.');
+      }
+    } catch (err) {
+      console.error('Save error:', err);
+      Drive.showToast(err.message || 'Error saving file', 'error');
+    } finally {
+      if (saveBtn) {
+        saveBtn.disabled = false;
+        saveBtn.innerHTML = origHtml || 'Save';
+      }
+    }
+  },
+
+  // ==========================================
+  // FLOATING AUDIO WAVEFORM MINI PLAYER
+  // ==========================================
+  audioPlay(file) {
+    if (!file || !file.hosted_url) return;
+    const player = document.getElementById('audio-mini-player');
+    const audioEl = document.getElementById('global-audio-element');
+    const titleEl = document.getElementById('mini-player-title');
+    if (!player || !audioEl) return;
+
+    titleEl.textContent = file.name || 'Audio Track';
+    audioEl.src = file.hosted_url;
+    audioEl.play().catch(e => console.warn('Autoplay prevented:', e));
+    player.style.display = 'flex';
+  },
+
+  audioTogglePlay() {
+    const audioEl = document.getElementById('global-audio-element');
+    if (!audioEl) return;
+    if (audioEl.paused) {
+      audioEl.play();
+    } else {
+      audioEl.pause();
+    }
+  },
+
+  audioRewind(sec = 10) {
+    const audioEl = document.getElementById('global-audio-element');
+    if (audioEl) audioEl.currentTime = Math.max(0, audioEl.currentTime - sec);
+  },
+
+  audioForward(sec = 10) {
+    const audioEl = document.getElementById('global-audio-element');
+    if (audioEl) audioEl.currentTime = Math.min(audioEl.duration || 0, audioEl.currentTime + sec);
+  },
+
+  audioSeek(val) {
+    const audioEl = document.getElementById('global-audio-element');
+    if (audioEl && audioEl.duration) {
+      audioEl.currentTime = (val / 100) * audioEl.duration;
+    }
+  },
+
+  audioToggleMute() {
+    const audioEl = document.getElementById('global-audio-element');
+    const volIcon = document.getElementById('mini-icon-volume');
+    if (!audioEl) return;
+    audioEl.muted = !audioEl.muted;
+    if (volIcon) volIcon.innerHTML = audioEl.muted ? Icons.volume_mute : Icons.volume;
+  },
+
+  audioClose() {
+    const player = document.getElementById('audio-mini-player');
+    const audioEl = document.getElementById('global-audio-element');
+    if (audioEl) {
+      audioEl.pause();
+      audioEl.src = '';
+    }
+    if (player) player.style.display = 'none';
+  },
+
+  onAudioTimeUpdate() {
+    const audioEl = document.getElementById('global-audio-element');
+    const timeEl = document.getElementById('mini-player-time');
+    const scrubber = document.getElementById('mini-player-scrubber');
+    if (!audioEl || !timeEl || !scrubber) return;
+
+    const cur = audioEl.currentTime || 0;
+    const dur = audioEl.duration || 0;
+    timeEl.textContent = `${this.formatTime(cur)} / ${this.formatTime(dur)}`;
+
+    if (dur > 0) {
+      scrubber.value = (cur / dur) * 100;
+    }
+  },
+
+  onAudioPlayState(isPlaying) {
+    this.isAudioPlaying = isPlaying;
+    const player = document.getElementById('audio-mini-player');
+    const playIcon = document.getElementById('mini-icon-play');
+    if (player) player.classList.toggle('is-playing', isPlaying);
+    if (playIcon) playIcon.innerHTML = isPlaying ? Icons.pause : Icons.play;
+  },
+
+  onAudioEnded() {
+    this.onAudioPlayState(false);
+  },
+
+  formatTime(sec) {
+    if (isNaN(sec) || sec === 0) return '0:00';
+    const m = Math.floor(sec / 60);
+    const s = Math.floor(sec % 60);
+    return `${m}:${s < 10 ? '0' : ''}${s}`;
   }
 };

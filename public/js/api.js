@@ -52,6 +52,22 @@ const API = {
     return data;
   },
 
+  async get(endpoint) {
+    return this.request(endpoint, { method: 'GET' });
+  },
+
+  async post(endpoint, body = {}) {
+    return this.request(endpoint, { method: 'POST', body });
+  },
+
+  async patch(endpoint, body = {}) {
+    return this.request(endpoint, { method: 'PATCH', body });
+  },
+
+  async delete(endpoint) {
+    return this.request(endpoint, { method: 'DELETE' });
+  },
+
   // Auth APIs
   async register(name, email, password) {
     return this.request('/api/auth/register', { method: 'POST', body: { name, email, password } });
@@ -391,5 +407,45 @@ const API = {
       method: 'PATCH',
       body: preferences
     });
+  },
+
+  // Secure Shares (Expiring & Password-protected)
+  async createShare(fileId, expiresHours = 24, burnAfterReading = false, password = '') {
+    return this.post('/api/shares/create', {
+      file_id: fileId,
+      expires_hours: expiresHours,
+      burn_after_reading: burnAfterReading,
+      password
+    });
+  },
+
+  async getShareMeta(token) {
+    return this.get(`/api/shares/${token}`);
+  },
+
+  async accessShare(token, password = '') {
+    return this.post(`/api/shares/${token}/access`, { password });
+  },
+
+  // Webhooks
+  async getWebhooks() {
+    return this.get('/api/webhooks');
+  },
+
+  async createWebhook(name, url, secret = '', events = []) {
+    return this.post('/api/webhooks', { name, url, secret, events });
+  },
+
+  async deleteWebhook(webhookId) {
+    return this.delete(`/api/webhooks/${webhookId}`);
+  },
+
+  async testWebhook(webhookId) {
+    return this.post(`/api/webhooks/${webhookId}/test`);
+  },
+
+  // File Content Editing
+  async saveFileContent(fileId, content) {
+    return this.post('/api/files/save-content', { file_id: fileId, content });
   }
 };

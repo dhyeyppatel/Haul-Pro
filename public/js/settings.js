@@ -381,6 +381,8 @@ const Settings = {
     this.switchTab(tabName);
     if (tabName === 'storage') {
       await this.loadStats();
+    } else if (tabName === 'webhooks') {
+      await this.loadWebhooks();
     }
   },
 
@@ -403,6 +405,8 @@ const Settings = {
     });
     if (tabName === 'storage') {
       this.loadStats();
+    } else if (tabName === 'webhooks') {
+      this.loadWebhooks();
     }
   },
 
@@ -611,5 +615,123 @@ const Settings = {
     } catch (err) {
       Drive.showToast(err.message || 'Failed to empty trash', 'error');
     }
+  },
+
+  async loadWebhooks() {
+    const listEl = document.getElementById('webhooks-list');
+    if (!listEl) return;
+    listEl.innerHTML = '<div class="empty-state-sm" style="color: var(--text-secondary); font-size: 13px; padding: 12px 0;">Loading webhooks...</div>';
+
+    try {
+      const res = await API.getWebhooks();
+      if (!res.success || !res.webhooks || !res.webhooks.length) {
+        listEl.innerHTML = `
+          <div style="text-align: center; padding: 24px 12px; color: var(--text-secondary); font-size: 13px;">
+            No webhooks configured yet. Register a Discord or Slack endpoint above to receive event alerts.
+          </div>
+        `;
+        return;
+      }
+
+      listEl.innerHTML = res.webhooks.map(wh => {
+        const events = (wh.events || []).map(e => `<span class="webhook-event-pill">${this.escapeHtml(e)}</span>`).join(' ');
+        const secretDisplay = wh.secret ? 'Signed HMAC' : 'No Secret';
+        return `
+          <div class="webhook-item-card" data-id="${wh.id}">
+            <div class="webhook-item-header">
+              <div class="webhook-item-name">${this.escapeHtml(wh.name || 'Webhook')}</div>
+              <div class="webhook-item-status">Active</div>
+            </div>
+            <div class="webhook-item-url" title="${this.escapeHtml(wh.url)}">${this.escapeHtml(wh.url)}</div>
+            <div class="webhook-item-footer">
+              <div class="webhook-item-events">${events} &bull; <span style="font-size: 11px; color: var(--text-secondary);">${secretDisplay}</span></div>
+              <div class="webhook-item-actions">
+                <button type="button" class="btn-text" style="font-size: 12px; padding: 4px 10px;" onclick="Settings.testWebhook('${wh.id}')">Test Ping</button>
+                <button type="button" class="btn-text" style="font-size: 12px; padding: 4px 10px; color: #ea4335;" onclick="Settings.deleteWebhook('${wh.id}')">Delete</button>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    } catch (err) {
+      listEl.innerHTML = `<div style="color: #ea4335; font-size: 13px; padding: 12px 0;">Failed to load webhooks: ${this.escapeHtml(err.message)}</div>`;
+    }
+  },
+
+  async saveWebhook() {
+    const nameInput = document.getElementById('webhook-name-input');
+    const urlInput = document.getElementById('webhook-url-input');
+    const secretInput = document.getElementById('webhook-secret-input');
+    const evtUpload = document.getElementById('wh-evt-upload');
+    const evtDelete = document.getElementById('wh-evt-delete');
+    const evtShare = document.getElementById('wh-evt-share');
+
+    const name = nameInput ? nameInput.value.trim() : '';
+    const url = urlInput ? urlInput.value.trim() : '';
+    const secret = secretInput ? secretInput.value.trim() : '';
+
+    if (!url) {
+      Drive.showToast('Please enter a payload URL', 'error');
+      return;
+    }
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      Drive.showToast('Payload URL must start with http:// or https://', 'error');
+      return;
+    }
+
+    const events = [];
+    if (evtUpload && evtUpload.checked) events.push('file.uploaded');
+    if (evtDelete && evtDelete.checked) events.push('file.deleted');
+    if (evtShare && evtShare.checked) events.push('file.shared');
+    if (!events.length) events.push('file.uploaded');
+
+    try {
+      const res = await API.createWebhook(name || 'Webhook Endpoint', url, secret, events);
+      if (res.success) {
+        Drive.showToast('Webhook integration registered successfully!');
+        if (nameInput) nameInput.value = '';
+        if (urlInput) urlInput.value = '';
+        if (secretInput) secretInput.value = '';
+        await this.loadWebhooks();
+      } else {
+        Drive.showToast(res.error || 'Failed to save webhook', 'error');
+      }
+    } catch (err) {
+      Drive.showToast(err.message || 'Failed to save webhook', 'error');
+    }
+  },
+
+  async testWebhook(webhookId) {
+    Drive.showToast('Dispatching test ping to webhook...');
+    try {
+      const res = await API.testWebhook(webhookId);
+      if (res.success) {
+        Drive.showToast('Test ping sent successfully!');
+      } else {
+        Drive.showToast(res.error || 'Test ping failed', 'error');
+      }
+    } catch (err) {
+      Drive.showToast(err.message || 'Failed to ping webhook', 'error');
+    }
+  },
+
+  async deleteWebhook(webhookId) {
+    if (!confirm('Are you sure you want to delete this webhook integration?')) return;
+    try {
+      const res = await API.deleteWebhook(webhookId);
+      if (res.success) {
+        Drive.showToast('Webhook deleted.');
+        await this.loadWebhooks();
+      } else {
+        Drive.showToast(res.error || 'Failed to delete webhook', 'error');
+      }
+    } catch (err) {
+      Drive.showToast(err.message || 'Failed to delete webhook', 'error');
+    }
+  },
+
+  escapeHtml(str) {
+    if (!str) return '';
+    return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
 };

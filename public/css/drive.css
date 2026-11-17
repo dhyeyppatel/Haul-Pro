@@ -3713,3 +3713,452 @@ tr.selected .row-select-checkbox {
     padding-bottom: 24px;
   }
 }
+
+/* ==========================================
+   1. NAVBAR QUICK THEME TOGGLE BUTTON
+   ========================================== */
+.topbar-theme-btn {
+  color: var(--text-secondary);
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), color 0.15s ease;
+}
+
+.topbar-theme-btn:hover {
+  color: var(--text-primary);
+  transform: rotate(20deg) scale(1.08);
+}
+
+/* ==========================================
+   2. 3D COIN-FLIP PROFILE AVATAR & QR CODE
+   ========================================== */
+.insta-avatar-coin {
+  perspective: 1000px;
+  width: 90px;
+  height: 90px;
+  cursor: pointer;
+  position: relative;
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.coin-flipper {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  transform-style: preserve-3d;
+  transition: transform 0.65s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.insta-avatar-coin.is-flipped .coin-flipper {
+  transform: rotateY(180deg);
+}
+
+.coin-front,
+.coin-back {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.coin-front {
+  z-index: 2;
+  transform: rotateY(0deg);
+}
+
+.coin-back {
+  transform: rotateY(180deg);
+  background: #ffffff;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
+  border: 2.5px solid var(--color-blue);
+  padding: 5px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.coin-qr-badge {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 26px;
+  height: 26px;
+  background: var(--color-blue);
+  color: #fff;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #ffffff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  transition: transform 0.2s ease;
+}
+
+[data-theme="dark"] .coin-qr-badge {
+  border-color: #1a1d24;
+}
+
+.insta-avatar-coin:hover .coin-qr-badge {
+  transform: scale(1.15);
+}
+
+.avatar-qr-container {
+  width: 72px;
+  height: 72px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.avatar-qr-container svg {
+  width: 100%;
+  height: 100%;
+  border-radius: 4px;
+}
+
+.coin-flip-back-hint {
+  font-size: 8px;
+  font-weight: 700;
+  color: #5f6368;
+  margin-top: 1px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* ==========================================
+   3. FLOATING AUDIO WAVEFORM MINI PLAYER
+   ========================================== */
+.audio-mini-player {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  width: 380px;
+  max-width: calc(100vw - 32px);
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid var(--border-color);
+  border-radius: 18px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.18);
+  z-index: 1500;
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  animation: miniPlayerSlideUp 0.3s cubic-bezier(0.2, 0, 0, 1);
+}
+
+[data-theme="dark"] .audio-mini-player {
+  background: rgba(22, 25, 32, 0.94);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6);
+  border-color: var(--border-color);
+}
+
+@keyframes miniPlayerSlideUp {
+  from { opacity: 0; transform: translateY(20px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.mini-player-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.mini-player-art {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: #e8f0fe;
+  color: var(--color-blue);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+[data-theme="dark"] .mini-player-art {
+  background: #1e2c45;
+  color: #60a5fa;
+}
+
+.mini-player-details {
+  min-width: 0;
+  flex: 1;
+}
+
+.mini-player-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mini-player-time {
+  font-size: 11px;
+  color: var(--text-secondary);
+  font-family: monospace;
+}
+
+.mini-player-center {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.mini-player-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.mini-ctrl-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.mini-ctrl-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.mini-ctrl-btn.primary {
+  width: 36px;
+  height: 36px;
+  background: var(--color-blue);
+  color: #ffffff;
+}
+
+.mini-ctrl-btn.primary:hover {
+  transform: scale(1.06);
+}
+
+.mini-waveform-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.mini-waveform-bars {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 16px;
+  padding: 0 4px;
+}
+
+.w-bar {
+  width: 3px;
+  height: 4px;
+  background: var(--color-blue);
+  border-radius: 2px;
+  opacity: 0.7;
+  transition: height 0.15s ease;
+}
+
+.audio-mini-player.is-playing .w-bar {
+  animation: waveDance 1.2s ease-in-out infinite alternate;
+}
+
+.audio-mini-player.is-playing .w-bar:nth-child(2n) { animation-delay: 0.15s; }
+.audio-mini-player.is-playing .w-bar:nth-child(3n) { animation-delay: 0.3s; }
+.audio-mini-player.is-playing .w-bar:nth-child(4n) { animation-delay: 0.45s; }
+
+@keyframes waveDance {
+  0% { height: 4px; }
+  50% { height: 16px; }
+  100% { height: 6px; }
+}
+
+.mini-scrubber {
+  width: 100%;
+  height: 4px;
+  accent-color: var(--color-blue);
+  cursor: pointer;
+}
+
+.mini-player-right {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+}
+
+@media (max-width: 600px) {
+  .audio-mini-player {
+    right: 12px;
+    left: 12px;
+    width: auto;
+    bottom: 74px;
+  }
+}
+
+/* ==========================================
+   4. SECURE SHARE MODAL (EXPIRING & PASSWORDS)
+   ========================================== */
+.share-modal-card {
+  max-width: 500px;
+}
+
+.share-file-preview {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: var(--bg-hover);
+  border-radius: 12px;
+  margin-bottom: 16px;
+}
+
+.share-file-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 320px;
+}
+
+.share-file-meta {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.apple-select {
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-size: 13px;
+  outline: none;
+}
+
+.apple-input-sm {
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-size: 13px;
+  width: 160px;
+  outline: none;
+}
+
+.share-result-box {
+  margin-top: 16px;
+  padding: 14px;
+  background: var(--bg-hover);
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+}
+
+.share-result-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-secondary);
+  display: block;
+  margin-bottom: 8px;
+}
+
+.share-url-row {
+  display: flex;
+  gap: 8px;
+}
+
+.share-url-input {
+  flex: 1;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-primary);
+  color: var(--color-blue);
+  font-size: 13px;
+  font-family: monospace;
+}
+
+.share-result-badges {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+
+.share-pill-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 12px;
+  background: #e8f0fe;
+  color: #1967d2;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+[data-theme="dark"] .share-pill-badge {
+  background: #1e2c45;
+  color: #60a5fa;
+}
+
+/* ==========================================
+   5. WEBHOOKS SETTINGS LIST & CARDS
+   ========================================== */
+.webhook-item-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-subtle);
+  gap: 12px;
+}
+
+.webhook-item-card:last-child {
+  border-bottom: none;
+}
+
+.webhook-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.webhook-url-sub {
+  font-size: 11px;
+  color: var(--text-secondary);
+  font-family: monospace;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 320px;
+}
+
+.webhook-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}

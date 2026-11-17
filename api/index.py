@@ -1,6 +1,11 @@
 import os
 import re
 import datetime
+import json
+import hashlib
+import hmac
+import secrets
+import threading
 from bson import ObjectId
 from flask import Flask, request, jsonify, send_from_directory, make_response
 from flask_cors import CORS
@@ -157,6 +162,54 @@ def serialize_doc(doc):
     if "updated_at" in d and isinstance(d["updated_at"], datetime.datetime):
         d["updated_at"] = d["updated_at"].isoformat()
     return d
+
+def dispatch_single_webhook(wh_url, wh_secret, event_name, payload_data):
+    try:
+        body = {
+            "event": event_name,
+            "timestamp": datetime.datetime.utcnow().isoformat(),
+            "data": payload_data
+        }
+        json_str = json.dumps(body)
+        headers = {
+            "Content-Type": "application/json",
+            "User-Agent": "Shelfie-Webhook/2.0"
+        }
+        if wh_secret:
+            sig = hmac.new(wh_secret.encode("utf-8"), json_str.encode("utf-8"), hashlib.sha256).hexdigest()
+            headers["X-Shelfie-Signature"] = sig
+
+        if "discord.com/api/webhooks" in wh_url or "discordapp.com/api/webhooks" in wh_url:
+            desc = f"Shelfie Event: **{event_name}**"
+            if event_name == "file.uploaded":
+                desc = f"File Uploaded: **{payload_data.get('name', 'file')}** ({payload_data.get('category', 'item')}) - {payload_data.get('size', 0)} bytes"
+            elif event_name == "file.deleted":
+                desc = f"File Deleted: **{payload_data.get('name', 'file')}**"
+            elif event_name == "file.shared":
+                desc = f"Secure Share Created: **{payload_data.get('file_name', 'file')}**"
+            requests.post(wh_url, json={"content": f"[Shelfie Cloud Drive] {desc}"}, timeout=6)
+        elif "hooks.slack.com" in wh_url:
+            requests.post(wh_url, json={"text": f"[Shelfie Cloud Drive] Event: {event_name} - {json_str}"}, timeout=6)
+        else:
+            requests.post(wh_url, data=json_str, headers=headers, timeout=6)
+    except Exception as err:
+        print("Webhook delivery error:", err)
+
+def trigger_webhooks(user_id, event_name, payload_data):
+    def run():
+        try:
+            database = get_db()
+            uid = ObjectId(user_id) if isinstance(user_id, str) else user_id
+            webhooks = list(database.webhooks.find({"user_id": uid, "is_active": {"$ne": False}}))
+            for wh in webhooks:
+                events = wh.get("events", [])
+                if not events or event_name in events or "*" in events:
+                    dispatch_single_webhook(wh.get("url"), wh.get("secret"), event_name, payload_data)
+        except Exception as e:
+            print("trigger_webhooks error:", e)
+
+    t = threading.Thread(target=run, daemon=True)
+    t.start()
 
 # ==========================================
 # AUTH ENDPOINTS
@@ -894,6 +947,8 @@ def record_file():
     folder_param = data.get("folder_id") or data.get("folderId")
     folder_id = ObjectId(folder_param) if folder_param and str(folder_param) not in ("root", "null", "undefined") else None
     is_public = bool(data.get("is_public", False))
+    is_encrypted = bool(data.get("is_encrypted", False))
+    encryption_meta = data.get("encryption_meta") or {}
     delete_token = data.get("delete_token") or ""
 
     database = get_db()
@@ -911,6 +966,8 @@ def record_file():
         "hosted_url": hosted_url,
         "delete_token": delete_token,
         "is_public": is_public,
+        "is_encrypted": is_encrypted,
+        "encryption_meta": encryption_meta,
         "is_starred": False,
         "is_trashed": False,
         "tags": [],
@@ -927,9 +984,11 @@ def record_file():
         database.users.update_one({"_id": user_id}, {"$inc": {"storage_used_bytes": file_size}})
 
     # Log activity
-    record_activity(user_id, "upload", filename, f"Uploaded '{filename}' ({category.capitalize()})", "file", {"size": file_size, "category": category})
+    act_msg = f"Uploaded encrypted '{filename}' ({category.capitalize()})" if is_encrypted else f"Uploaded '{filename}' ({category.capitalize()})"
+    record_activity(user_id, "upload", filename, act_msg, "file", {"size": file_size, "category": category, "encrypted": is_encrypted})
 
     serialized = serialize_doc(file_doc)
+    trigger_webhooks(user_id, "file.uploaded", serialized)
     return jsonify({"success": True, "file": serialized, "files": [serialized]}), 201
 
 @app.route("/api/files/upload", methods=["POST"])
@@ -1242,7 +1301,6 @@ def bulk_file_visibility():
     )
     record_activity(user_id, "visibility", f"{len(obj_ids)} files", f"Changed {len(obj_ids)} file(s) to {'Public' if is_public else 'Private'}", "file", {"count": len(obj_ids), "visibility": "public" if is_public else "private"})
     return jsonify({"success": True, "message": f"Updated visibility for {len(obj_ids)} file(s)."})
-    return jsonify({"success": True, "message": f"Updated visibility for {len(obj_ids)} file(s)."})
 
 @app.route("/api/files/bulk-delete", methods=["POST"])
 def bulk_delete_files():
@@ -1267,13 +1325,333 @@ def bulk_delete_files():
         database.files.delete_many({"_id": {"$in": obj_ids}, "user_id": user_id})
         if total_size > 0:
             database.users.update_one({"_id": user_id}, {"$inc": {"storage_used_bytes": -total_size}})
+        record_activity(user_id, "delete", f"{len(obj_ids)} files", f"Permanently deleted {len(obj_ids)} file(s)", "file", {"count": len(obj_ids)})
     else:
         database.files.update_many(
             {"_id": {"$in": obj_ids}, "user_id": user_id},
             {"$set": {"is_trashed": True, "updated_at": datetime.datetime.utcnow()}}
         )
+        record_activity(user_id, "delete", f"{len(obj_ids)} files", f"Moved {len(obj_ids)} file(s) to Trash", "file", {"count": len(obj_ids)})
 
+    trigger_webhooks(user_id, "file.deleted", {"count": len(obj_ids), "permanent": permanent})
     return jsonify({"success": True, "message": f"Processed {len(obj_ids)} file(s)."})
+
+@app.route("/api/files/bulk-move", methods=["POST"])
+def bulk_move_files():
+    auth_user = authenticate()
+    if not auth_user:
+        return jsonify({"success": False, "error": "Unauthorized"}), 401
+
+    data = request.get_json() or {}
+    file_ids = data.get("fileIds", [])
+    folder_param = data.get("folderId")
+    folder_id = ObjectId(folder_param) if folder_param and str(folder_param) not in ("root", "null", "undefined") else None
+
+    if not file_ids:
+        return jsonify({"success": False, "error": "No files selected."}), 400
+
+    database = get_db()
+    user_id = ObjectId(auth_user["id"])
+    obj_ids = [ObjectId(f) for f in file_ids if f]
+
+    database.files.update_many(
+        {"_id": {"$in": obj_ids}, "user_id": user_id},
+        {"$set": {"folder_id": folder_id, "updated_at": datetime.datetime.utcnow()}}
+    )
+    record_activity(user_id, "move", f"{len(obj_ids)} files", f"Moved {len(obj_ids)} file(s)", "file", {"count": len(obj_ids)})
+    return jsonify({"success": True, "message": f"Moved {len(obj_ids)} file(s)."})
+
+@app.route("/api/files/bulk-restore", methods=["POST"])
+def bulk_restore_files():
+    auth_user = authenticate()
+    if not auth_user:
+        return jsonify({"success": False, "error": "Unauthorized"}), 401
+
+    data = request.get_json() or {}
+    file_ids = data.get("fileIds", [])
+    if not file_ids:
+        return jsonify({"success": False, "error": "No files selected."}), 400
+
+    database = get_db()
+    user_id = ObjectId(auth_user["id"])
+    obj_ids = [ObjectId(f) for f in file_ids if f]
+
+    database.files.update_many(
+        {"_id": {"$in": obj_ids}, "user_id": user_id},
+        {"$set": {"is_trashed": False, "updated_at": datetime.datetime.utcnow()}}
+    )
+    record_activity(user_id, "restore", f"{len(obj_ids)} files", f"Restored {len(obj_ids)} file(s) from Trash", "file", {"count": len(obj_ids)})
+    return jsonify({"success": True, "message": f"Restored {len(obj_ids)} file(s)."})
+
+# ==========================================
+# INLINE FILE EDITING / CONTENT SAVE
+# ==========================================
+
+@app.route("/api/files/save-content", methods=["POST"])
+def save_file_content():
+    auth_user = authenticate()
+    if not auth_user:
+        return jsonify({"success": False, "error": "Unauthorized"}), 401
+
+    data = request.get_json() or {}
+    file_id = data.get("file_id") or data.get("fileId")
+    content = data.get("content", "")
+
+    if not file_id:
+        return jsonify({"success": False, "error": "file_id is required."}), 400
+
+    database = get_db()
+    user_id = ObjectId(auth_user["id"])
+    obj_id = ObjectId(file_id)
+
+    file_doc = database.files.find_one({"_id": obj_id, "user_id": user_id})
+    if not file_doc:
+        return jsonify({"success": False, "error": "File not found or access denied."}), 404
+
+    content_bytes = content.encode("utf-8")
+    new_size = len(content_bytes)
+    old_size = file_doc.get("size", 0)
+    size_diff = new_size - old_size
+
+    new_url = file_doc.get("hosted_url")
+    filename = file_doc.get("name", "document.txt")
+    mime_type = file_doc.get("mime_type", "text/plain")
+
+    try:
+        files = {"file": (filename, content_bytes, mime_type)}
+        headers = {"X-Api-Key": HAUL_MEDIA_API_KEY}
+        resp = requests.post(f"{MEDIA_HOST_URL}/upload", files=files, headers=headers, timeout=15)
+        if resp.status_code == 200:
+            res_data = resp.json()
+            new_url = res_data.get("url") or res_data.get("data") or new_url
+    except Exception as e:
+        print("Worker re-upload notice:", e)
+
+    now = datetime.datetime.utcnow()
+    database.files.update_one(
+        {"_id": obj_id},
+        {
+            "$set": {
+                "size": new_size,
+                "hosted_url": new_url,
+                "updated_at": now
+            }
+        }
+    )
+
+    if size_diff != 0:
+        database.users.update_one({"_id": user_id}, {"$inc": {"storage_used_bytes": size_diff}})
+
+    record_activity(user_id, "edit", filename, f"Edited content of '{filename}' ({new_size} bytes)", "file", {"size": new_size})
+    
+    updated_doc = database.files.find_one({"_id": obj_id})
+    serialized = serialize_doc(updated_doc)
+    trigger_webhooks(user_id, "file.updated", serialized)
+
+    return jsonify({"success": True, "file": serialized})
+
+# ==========================================
+# EXPIRING & PASSWORD PROTECTED SHARE LINKS
+# ==========================================
+
+@app.route("/api/shares/create", methods=["POST"])
+def create_share():
+    auth_user = authenticate()
+    if not auth_user:
+        return jsonify({"success": False, "error": "Unauthorized"}), 401
+
+    data = request.get_json() or {}
+    file_id = data.get("file_id") or data.get("fileId")
+    if not file_id:
+        return jsonify({"success": False, "error": "file_id is required."}), 400
+
+    database = get_db()
+    user_id = ObjectId(auth_user["id"])
+    file_doc = database.files.find_one({"_id": ObjectId(file_id), "user_id": user_id})
+    if not file_doc:
+        return jsonify({"success": False, "error": "File not found."}), 404
+
+    expires_in_hours = data.get("expires_in_hours")
+    burn_after_reading = bool(data.get("burn_after_reading", False))
+    password = (data.get("password") or "").strip()
+
+    expires_at = None
+    if expires_in_hours and float(expires_in_hours) > 0:
+        expires_at = datetime.datetime.utcnow() + datetime.timedelta(hours=float(expires_in_hours))
+
+    password_hash = None
+    if password:
+        password_hash = hashlib.sha256(password.encode("utf-8")).hexdigest()
+
+    token = secrets.token_urlsafe(12)
+    share_doc = {
+        "token": token,
+        "file_id": ObjectId(file_id),
+        "user_id": user_id,
+        "password_hash": password_hash,
+        "expires_at": expires_at,
+        "burn_after_reading": burn_after_reading,
+        "is_burned": False,
+        "view_count": 0,
+        "created_at": datetime.datetime.utcnow()
+    }
+    database.shares.insert_one(share_doc)
+
+    record_activity(user_id, "share", file_doc["name"], f"Created secure link for '{file_doc['name']}'", "file", {"burn": burn_after_reading, "has_password": bool(password)})
+    trigger_webhooks(user_id, "file.shared", {"file_name": file_doc["name"], "token": token, "burn": burn_after_reading})
+
+    return jsonify({
+        "success": True,
+        "token": token,
+        "share_url": f"/s/{token}",
+        "expires_at": expires_at.isoformat() if expires_at else None,
+        "burn_after_reading": burn_after_reading,
+        "has_password": bool(password)
+    })
+
+@app.route("/api/shares/<token>", methods=["GET"])
+def get_share_meta(token):
+    database = get_db()
+    share = database.shares.find_one({"token": token})
+    if not share:
+        return jsonify({"success": False, "error": "Share link not found or invalid."}), 404
+
+    if share.get("is_burned"):
+        return jsonify({"success": False, "error": "This file was set to burn after reading and has already been viewed.", "burned": True}), 410
+
+    if share.get("expires_at") and share["expires_at"] < datetime.datetime.utcnow():
+        return jsonify({"success": False, "error": "This secure link has expired.", "expired": True}), 410
+
+    file_doc = database.files.find_one({"_id": share["file_id"]})
+    if not file_doc:
+        return jsonify({"success": False, "error": "The shared file no longer exists."}), 404
+
+    return jsonify({
+        "success": True,
+        "token": token,
+        "requires_password": bool(share.get("password_hash")),
+        "burn_after_reading": bool(share.get("burn_after_reading")),
+        "expires_at": share["expires_at"].isoformat() if share.get("expires_at") else None,
+        "file_name": file_doc["name"],
+        "file_size": file_doc["size"],
+        "category": file_doc.get("category", "document"),
+        "extension": file_doc.get("extension", ""),
+        "created_at": share["created_at"].isoformat() if isinstance(share.get("created_at"), datetime.datetime) else None
+    })
+
+@app.route("/api/shares/<token>/access", methods=["POST"])
+def access_share(token):
+    database = get_db()
+    share = database.shares.find_one({"token": token})
+    if not share:
+        return jsonify({"success": False, "error": "Share link not found or invalid."}), 404
+
+    if share.get("is_burned"):
+        return jsonify({"success": False, "error": "This file has already self-destructed.", "burned": True}), 410
+
+    if share.get("expires_at") and share["expires_at"] < datetime.datetime.utcnow():
+        return jsonify({"success": False, "error": "This secure link has expired.", "expired": True}), 410
+
+    if share.get("password_hash"):
+        data = request.get_json() or {}
+        entered_password = (data.get("password") or "").strip()
+        entered_hash = hashlib.sha256(entered_password.encode("utf-8")).hexdigest()
+        if entered_hash != share["password_hash"]:
+            return jsonify({"success": False, "error": "Incorrect password for this secure link."}), 403
+
+    file_doc = database.files.find_one({"_id": share["file_id"]})
+    if not file_doc:
+        return jsonify({"success": False, "error": "The shared file no longer exists."}), 404
+
+    if share.get("burn_after_reading"):
+        database.shares.update_one({"_id": share["_id"]}, {"$set": {"is_burned": True, "burned_at": datetime.datetime.utcnow()}, "$inc": {"view_count": 1}})
+    else:
+        database.shares.update_one({"_id": share["_id"]}, {"$inc": {"view_count": 1}})
+
+    return jsonify({
+        "success": True,
+        "file": serialize_doc(file_doc)
+    })
+
+# ==========================================
+# WEBHOOKS ENDPOINTS
+# ==========================================
+
+@app.route("/api/webhooks", methods=["GET"])
+def get_webhooks():
+    auth_user = authenticate()
+    if not auth_user:
+        return jsonify({"success": False, "error": "Unauthorized"}), 401
+
+    database = get_db()
+    user_id = ObjectId(auth_user["id"])
+    webhooks = list(database.webhooks.find({"user_id": user_id}).sort("created_at", -1))
+    return jsonify({"success": True, "webhooks": [serialize_doc(w) for w in webhooks]})
+
+@app.route("/api/webhooks", methods=["POST"])
+def create_webhook():
+    auth_user = authenticate()
+    if not auth_user:
+        return jsonify({"success": False, "error": "Unauthorized"}), 401
+
+    data = request.get_json() or {}
+    url = (data.get("url") or "").strip()
+    if not url or not (url.startswith("http://") or url.startswith("https://")):
+        return jsonify({"success": False, "error": "A valid HTTP/HTTPS webhook URL is required."}), 400
+
+    name = (data.get("name") or "Webhook").strip()
+    secret = (data.get("secret") or "").strip() or secrets.token_hex(16)
+    events = data.get("events") or ["file.uploaded", "file.deleted", "file.shared"]
+
+    database = get_db()
+    user_id = ObjectId(auth_user["id"])
+
+    wh_doc = {
+        "user_id": user_id,
+        "name": name,
+        "url": url,
+        "secret": secret,
+        "events": events,
+        "is_active": True,
+        "created_at": datetime.datetime.utcnow()
+    }
+    res = database.webhooks.insert_one(wh_doc)
+    wh_doc["_id"] = res.inserted_id
+
+    return jsonify({"success": True, "webhook": serialize_doc(wh_doc)})
+
+@app.route("/api/webhooks/<webhook_id>", methods=["DELETE"])
+def delete_webhook(webhook_id):
+    auth_user = authenticate()
+    if not auth_user:
+        return jsonify({"success": False, "error": "Unauthorized"}), 401
+
+    database = get_db()
+    user_id = ObjectId(auth_user["id"])
+    database.webhooks.delete_one({"_id": ObjectId(webhook_id), "user_id": user_id})
+    return jsonify({"success": True, "message": "Webhook deleted."})
+
+@app.route("/api/webhooks/<webhook_id>/test", methods=["POST"])
+def test_webhook(webhook_id):
+    auth_user = authenticate()
+    if not auth_user:
+        return jsonify({"success": False, "error": "Unauthorized"}), 401
+
+    database = get_db()
+    user_id = ObjectId(auth_user["id"])
+    wh = database.webhooks.find_one({"_id": ObjectId(webhook_id), "user_id": user_id})
+    if not wh:
+        return jsonify({"success": False, "error": "Webhook not found."}), 404
+
+    try:
+        dispatch_single_webhook(wh["url"], wh.get("secret"), "ping.test", {
+            "message": "Shelfie Webhook Test Connection Succeeded!",
+            "triggered_by": auth_user["name"],
+            "timestamp": datetime.datetime.utcnow().isoformat()
+        })
+        return jsonify({"success": True, "message": "Test ping dispatched successfully!"})
+    except Exception as e:
+        return jsonify({"success": False, "error": f"Failed to deliver ping: {str(e)}"}), 500
 
 # ==========================================
 # PUBLIC PROFILE ENDPOINT (/<username>)

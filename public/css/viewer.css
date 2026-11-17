@@ -711,6 +711,54 @@
   to { transform: rotate(360deg); }
 }
 
+/* ==========================================
+   INLINE CODE & DOCUMENT EDITOR
+   ========================================== */
+.viewer-editor-container {
+  width: 100%;
+  max-width: 1100px;
+  height: calc(100vh - 120px);
+  background: #1e1e1e;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
+  display: flex;
+  overflow: hidden;
+  font-family: ui-monospace, "SF Mono", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.editor-gutter {
+  width: 48px;
+  background: #252526;
+  border-right: 1px solid #333;
+  color: #858585;
+  text-align: right;
+  padding: 16px 8px 16px 0;
+  user-select: none;
+  overflow: hidden;
+  line-height: 1.6;
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.editor-textarea {
+  flex: 1;
+  background: #1e1e1e;
+  color: #d4d4d4;
+  border: none;
+  outline: none;
+  padding: 16px;
+  resize: none;
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.6;
+  white-space: pre;
+  tab-size: 2;
+  overflow: auto;
+}
+
 @media (max-width: 768px) {
   .viewer-markdown-body {
     padding: 24px 20px;
