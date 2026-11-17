@@ -123,7 +123,7 @@ Configure these in `.env` (for local development) and in the **Vercel Dashboard*
    - `MONGODB_URI`: Your MongoDB Atlas URL
    - `JWT_SECRET`: A secure random secret
    - `MEDIA_HOST_URL`: `https://media-hosting.dhyeyp254.workers.dev`
-   - `HAUL_MEDIA_API_KEY`: `ct_dev_bbd2ae65abc5464d7965effceccf4fa8`
+   - `HAUL_MEDIA_API_KEY`: `Get from media.dhyey.cc`
 4. Deploy. Vercel automatically deploys every new commit pushed to `origin/main`.
 
 ---
