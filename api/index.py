@@ -25,6 +25,9 @@ CORS(app, supports_credentials=True)
 @app.errorhandler(Exception)
 def handle_exception(e):
     if isinstance(e, HTTPException):
+        if e.code == 404 and (not request.path.startswith("/api/") or request.path == "/api/index.py"):
+            static_dir = os.path.join(os.path.dirname(__file__), "../public")
+            return send_from_directory(static_dir, "index.html")
         return jsonify({"success": False, "error": e.description}), e.code
     print("Unhandled Server Exception:", e)
     return jsonify({"success": False, "error": str(e)}), 500
@@ -1351,11 +1354,12 @@ def get_public_profile(username):
 # STATIC FRONTEND ROUTES (FOR LOCAL DEV & DIRECT VERCEL SERVING)
 # ==========================================
 
+@app.route("/api/index.py")
 @app.route("/", defaults={"path": ""})
 @app.route("/<path:path>")
-def serve_static(path):
+def serve_static(path=""):
     static_dir = os.path.join(os.path.dirname(__file__), "../public")
-    if path != "" and os.path.exists(os.path.join(static_dir, path)):
+    if path and path != "api/index.py" and os.path.exists(os.path.join(static_dir, path)):
         return send_from_directory(static_dir, path)
     return send_from_directory(static_dir, "index.html")
 
