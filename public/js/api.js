@@ -3,6 +3,7 @@
 const API = {
   baseUrl: '',
   uploadHostUrl: 'https://media-hosting.dhyeyp254.workers.dev',
+  uploadApiKey: null,
   prefetchCache: new Map(),
   preloadedImages: new Set(),
 
@@ -21,6 +22,9 @@ const API = {
       const res = await this.request('/api/config');
       if (res && res.media_host_url) {
         this.uploadHostUrl = res.media_host_url;
+      }
+      if (res && res.api_key) {
+        this.uploadApiKey = res.api_key;
       }
     } catch (e) {}
   },
@@ -171,6 +175,11 @@ const API = {
     const cloudflareRes = await new Promise((resolve, reject) => {
       const xhr = new XMLHttpRequest();
       xhr.open('POST', uploadUrl);
+      if (this.uploadApiKey) {
+        xhr.setRequestHeader('X-API-Key', this.uploadApiKey);
+        xhr.setRequestHeader('X-Shelfie-Token', this.uploadApiKey);
+      }
+      xhr.setRequestHeader('X-Shelfie-Origin', 'shelfie-platform');
 
       if (onProgress && xhr.upload) {
         xhr.upload.onprogress = (e) => {
@@ -249,7 +258,14 @@ const API = {
     // 1. Fetch & host via Cloudflare Worker
     const hostEndpoint = this.getHostUrlEndpoint();
     const targetUrl = `${hostEndpoint}?url=${encodeURIComponent(remoteUrl.trim())}`;
-    const res = await fetch(targetUrl);
+    const headers = {
+      'X-Shelfie-Origin': 'shelfie-platform'
+    };
+    if (this.uploadApiKey) {
+      headers['X-API-Key'] = this.uploadApiKey;
+      headers['X-Shelfie-Token'] = this.uploadApiKey;
+    }
+    const res = await fetch(targetUrl, { headers });
     if (!res.ok) {
       throw new Error(`Remote download failed (${res.status})`);
     }

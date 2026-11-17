@@ -829,12 +829,16 @@ def toggle_folder_visibility(folder_id):
 
 @app.route("/api/config", methods=["GET"])
 def get_config():
-    return jsonify({
+    auth_user = authenticate()
+    data = {
         "success": True,
         "media_host_url": MEDIA_HOST_URL,
         "upload_url": f"{MEDIA_HOST_URL}/upload",
         "hosturl_url": f"{MEDIA_HOST_URL}/hosturl"
-    })
+    }
+    if auth_user:
+        data["api_key"] = HAUL_MEDIA_API_KEY
+    return jsonify(data)
 
 @app.route("/api/files/record", methods=["POST"])
 def record_file():
