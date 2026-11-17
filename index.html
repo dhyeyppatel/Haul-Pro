@@ -116,6 +116,14 @@
           </div>
         </button>
 
+        <button id="profile-qr-code-btn" class="profile-menu-item" title="Show Profile QR Code" onclick="Drive.openProfileQRPopout()">
+          <span id="profile-qr-menu-icon"></span>
+          <div class="menu-item-text">
+            <div class="menu-item-title">Profile QR Code</div>
+            <div class="menu-item-sub">Scan with Google Lens or Camera</div>
+          </div>
+        </button>
+
         <button id="profile-settings-btn" class="profile-menu-item" title="Preferences, API tokens, and storage">
           <span id="profile-settings-icon"></span>
           <div class="menu-item-text">
@@ -686,6 +694,52 @@
       <div class="modal-actions">
         <button type="button" class="btn-text" id="move-cancel-btn">Cancel</button>
         <button type="button" class="btn-filled" id="move-confirm-btn" disabled>Move here</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3D COIN-FLIP PROFILE QR POPOUT MODAL -->
+  <div id="qr-popout-modal" class="modal-backdrop" style="display: none;" onclick="Drive.closeProfileQRPopout(event)">
+    <div class="qr-popout-stage" onclick="event.stopPropagation()">
+      <div class="qr-popout-coin" id="qr-popout-coin">
+        <!-- Coin Front: Profile Image & User Info -->
+        <div class="qr-coin-face qr-coin-front" onclick="Drive.flipPopoutCoin()">
+          <div id="popout-coin-avatar" class="qr-coin-avatar">
+            <span id="popout-coin-initial">U</span>
+            <img id="popout-coin-img" class="qr-coin-img" style="display: none;" alt="" referrerpolicy="no-referrer">
+          </div>
+          <div class="qr-coin-name" id="popout-coin-name">User Name</div>
+          <div class="qr-coin-handle" id="popout-coin-handle">@username</div>
+          <div class="qr-coin-hint">Tap coin to flip for QR Code</div>
+        </div>
+
+        <!-- Coin Back: High-Contrast Large QR Code -->
+        <div class="qr-coin-face qr-coin-back">
+          <div class="qr-popout-header">
+            <div class="qr-popout-user">
+              <div id="popout-qr-avatar-mini" class="qr-mini-avatar">U</div>
+              <div>
+                <div class="qr-popout-title" id="popout-qr-name">User Name</div>
+                <div class="qr-popout-sub" id="popout-qr-handle">@username</div>
+              </div>
+            </div>
+            <button type="button" class="icon-btn apple-close-btn" onclick="Drive.closeProfileQRPopout()" title="Close">
+              <span id="qr-popout-close-icon"></span>
+            </button>
+          </div>
+
+          <div class="qr-popout-code-wrap">
+            <div id="qr-popout-svg-container" class="qr-popout-svg-container"></div>
+          </div>
+
+          <div class="qr-popout-footer">
+            <div class="qr-popout-scan-text">Scan with Google Lens or Camera to view profile</div>
+            <div class="qr-popout-actions">
+              <button type="button" class="btn-text" onclick="Drive.flipPopoutCoin()">Flip Back</button>
+              <button type="button" class="btn-filled" onclick="Drive.copyProfileLinkFromPopout()">Copy Link</button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -1371,6 +1425,10 @@
       if (secAccHdrIcon) secAccHdrIcon.innerHTML = Icons.lock_clock || Icons.lock;
       const secAccFileIcon = document.getElementById('secure-access-file-icon');
       if (secAccFileIcon) secAccFileIcon.innerHTML = Icons.file_generic;
+      const qrPopClose = document.getElementById('qr-popout-close-icon');
+      if (qrPopClose) qrPopClose.innerHTML = Icons.close;
+      const qrMenuIcon = document.getElementById('profile-qr-menu-icon');
+      if (qrMenuIcon) qrMenuIcon.innerHTML = Icons.qr_code;
 
       // Multi-select ZIP download icon
       const multiDownload = document.getElementById('multi-download-icon');

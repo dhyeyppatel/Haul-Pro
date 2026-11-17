@@ -3833,6 +3833,211 @@ tr.selected .row-select-checkbox {
 }
 
 /* ==========================================
+   3D COIN-FLIP QR POPOUT MODAL (LARGE & HIGH-CONTRAST)
+   ========================================== */
+.qr-popout-stage {
+  perspective: 1400px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: popoutStageIn 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes popoutStageIn {
+  from {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.qr-popout-coin {
+  width: 320px;
+  min-height: 440px;
+  position: relative;
+  transform-style: preserve-3d;
+  transition: transform 0.75s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.qr-popout-coin.is-flipped {
+  transform: rotateY(180deg);
+}
+
+.qr-coin-face {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  border-radius: 28px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.12);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.qr-coin-front {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  align-items: center;
+  justify-content: center;
+  padding: 36px 24px;
+  cursor: pointer;
+  z-index: 2;
+  transform: rotateY(0deg);
+}
+
+.qr-coin-avatar {
+  width: 110px;
+  height: 110px;
+  border-radius: 50%;
+  background: var(--color-blue);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 42px;
+  font-weight: 700;
+  margin-bottom: 20px;
+  overflow: hidden;
+  box-shadow: 0 12px 30px rgba(26, 115, 232, 0.35);
+  border: 3px solid #ffffff;
+}
+
+.qr-coin-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.qr-coin-name {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+
+.qr-coin-handle {
+  font-size: 14px;
+  color: var(--color-blue);
+  font-weight: 600;
+  margin-bottom: 24px;
+}
+
+.qr-coin-hint {
+  font-size: 12px;
+  color: var(--text-secondary);
+  padding: 8px 18px;
+  border-radius: 20px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+}
+
+.qr-coin-back {
+  background: #ffffff;
+  color: #111827;
+  padding: 24px 20px 20px;
+  transform: rotateY(180deg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.qr-popout-header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.qr-popout-user {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.qr-mini-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #1a73e8;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 700;
+  overflow: hidden;
+}
+
+.qr-mini-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.qr-popout-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #111827;
+  line-height: 1.2;
+}
+
+.qr-popout-sub {
+  font-size: 12px;
+  color: #1a73e8;
+  font-weight: 600;
+}
+
+.qr-popout-code-wrap {
+  width: 240px;
+  height: 240px;
+  background: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 16px;
+  padding: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  margin-bottom: 14px;
+}
+
+.qr-popout-svg-container svg {
+  display: block;
+  width: 224px;
+  height: 224px;
+}
+
+.qr-popout-scan-text {
+  font-size: 11px;
+  color: #6b7280;
+  text-align: center;
+  margin-bottom: 14px;
+  font-weight: 500;
+}
+
+.qr-popout-actions {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+}
+
+.qr-popout-actions button {
+  flex: 1;
+  justify-content: center;
+  border-radius: 12px;
+  font-size: 13px;
+  padding: 10px 14px;
+}
+
+/* ==========================================
    3. FLOATING AUDIO WAVEFORM MINI PLAYER
    ========================================== */
 .audio-mini-player {

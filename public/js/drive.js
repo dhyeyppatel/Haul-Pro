@@ -881,35 +881,114 @@ const Drive = {
   },
 
   // ==========================================
-  // PROFILE COIN FLIP (VECTOR QR CODE)
+  // PROFILE COIN FLIP & 3D QR POPOUT
   // ==========================================
   toggleProfileCoinFlip() {
-    const coin = document.getElementById('profile-avatar-coin');
-    const qrText = document.getElementById('profile-qr-btn-text');
-    if (!coin) return;
+    this.openProfileQRPopout();
+  },
 
-    coin.classList.toggle('is-flipped');
-    const isFlipped = coin.classList.contains('is-flipped');
+  openProfileQRPopout() {
+    const modal = document.getElementById('qr-popout-modal');
+    const coin = document.getElementById('qr-popout-coin');
+    const nameEl = document.getElementById('popout-coin-name');
+    const handleEl = document.getElementById('popout-coin-handle');
+    const qrNameEl = document.getElementById('popout-qr-name');
+    const qrHandleEl = document.getElementById('popout-qr-handle');
+    const avatarInit = document.getElementById('popout-coin-initial');
+    const avatarImg = document.getElementById('popout-coin-img');
+    const qrMiniAvatar = document.getElementById('popout-qr-avatar-mini');
+    const svgBox = document.getElementById('qr-popout-svg-container');
 
-    if (qrText) {
-      qrText.textContent = isFlipped ? 'Profile' : 'QR Code';
-    }
+    const username = this.profileUsername || Auth.currentUser?.username || 'user';
+    const name = (this.isPublicMode && this.profileData?.name) || Auth.currentUser?.name || username;
+    const initial = (name[0] || 'U').toUpperCase();
+    const avatarUrl = (this.isPublicMode && this.profileData?.avatar_url) || Auth.currentUser?.avatar_url || '';
 
-    if (isFlipped) {
-      const qrContainer = document.getElementById('avatar-qr-container');
-      if (qrContainer) {
-        const username = this.profileUsername || Auth.currentUser?.username || '';
-        const profileUrl = `${window.location.origin}/${username}`;
-        if (typeof QRCodeGen !== 'undefined' && QRCodeGen.generateSVG) {
-          qrContainer.innerHTML = QRCodeGen.generateSVG(profileUrl, {
-            size: 76,
-            margin: 1,
-            fg: '#1a73e8',
-            bg: '#ffffff'
-          });
-        }
+    if (nameEl) nameEl.textContent = name;
+    if (handleEl) handleEl.textContent = `@${username}`;
+    if (qrNameEl) qrNameEl.textContent = name;
+    if (qrHandleEl) qrHandleEl.textContent = `@${username}`;
+
+    if (avatarImg && avatarInit) {
+      if (avatarUrl) {
+        avatarImg.src = avatarUrl;
+        avatarImg.style.display = 'block';
+        avatarInit.style.display = 'none';
+      } else {
+        avatarImg.style.display = 'none';
+        avatarInit.textContent = initial;
+        avatarInit.style.display = 'block';
       }
     }
+
+    if (qrMiniAvatar) {
+      if (avatarUrl) {
+        qrMiniAvatar.innerHTML = `<img src="${avatarUrl}" alt="" referrerpolicy="no-referrer">`;
+      } else {
+        qrMiniAvatar.textContent = initial;
+      }
+    }
+
+    // Generate large 224px high-contrast standard QR code (Google Lens optimized)
+    const profileUrl = `${window.location.origin}/${username}`;
+    if (svgBox && typeof QRCodeGen !== 'undefined' && QRCodeGen.generateSVG) {
+      svgBox.innerHTML = QRCodeGen.generateSVG(profileUrl, {
+        size: 224,
+        margin: 4,
+        fg: '#000000',
+        bg: '#ffffff'
+      });
+    }
+
+    // Also update in-page coin if present
+    const inPageQr = document.getElementById('avatar-qr-container');
+    if (inPageQr && typeof QRCodeGen !== 'undefined' && QRCodeGen.generateSVG) {
+      inPageQr.innerHTML = QRCodeGen.generateSVG(profileUrl, {
+        size: 76,
+        margin: 2,
+        fg: '#000000',
+        bg: '#ffffff'
+      });
+    }
+
+    if (coin) {
+      coin.classList.remove('is-flipped');
+    }
+
+    if (modal) {
+      modal.style.display = 'flex';
+      // Trigger smooth 3D flip animation after display is mounted
+      setTimeout(() => {
+        if (coin) coin.classList.add('is-flipped');
+      }, 70);
+    }
+  },
+
+  flipPopoutCoin() {
+    const coin = document.getElementById('qr-popout-coin');
+    if (coin) coin.classList.toggle('is-flipped');
+  },
+
+  closeProfileQRPopout(e) {
+    if (e && e.target && e.target !== e.currentTarget && !e.target.closest('.apple-close-btn')) {
+      return;
+    }
+    const coin = document.getElementById('qr-popout-coin');
+    const modal = document.getElementById('qr-popout-modal');
+    if (coin) coin.classList.remove('is-flipped');
+    setTimeout(() => {
+      if (modal) modal.style.display = 'none';
+    }, 250);
+  },
+
+  copyProfileLinkFromPopout() {
+    const username = this.profileUsername || Auth.currentUser?.username || 'user';
+    const profileUrl = `${window.location.origin}/${username}`;
+    navigator.clipboard.writeText(profileUrl).then(() => {
+      this.showToast('Profile link copied to clipboard!');
+    }).catch(() => {
+      this.showToast('Profile link copied!');
+    });
   },
 
   // ==========================================
