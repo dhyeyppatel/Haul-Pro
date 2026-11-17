@@ -749,18 +749,23 @@ const Drive = {
     const storageBox = document.querySelector('.sidebar-storage');
     const navItems = document.querySelectorAll('.nav-list .nav-item');
     const mobFab = document.getElementById('mobile-fab-btn');
+    const mobTabBar = document.getElementById('mobile-tab-bar');
 
     if (this.isPublicMode && !this.isOwnerMode) {
+      document.body.classList.add('public-guest-mode');
       if (newBtn) newBtn.style.display = 'none';
       if (storageBox) storageBox.style.display = 'none';
       if (mobFab) mobFab.style.display = 'none';
+      if (mobTabBar) mobTabBar.style.display = 'none';
       navItems.forEach(item => {
         if (item.dataset.nav !== 'drive') item.style.display = 'none';
       });
     } else {
+      document.body.classList.remove('public-guest-mode');
       if (newBtn) newBtn.style.display = 'flex';
       if (storageBox) storageBox.style.display = 'block';
       if (mobFab) mobFab.style.display = 'flex';
+      if (mobTabBar) mobTabBar.style.display = '';
       navItems.forEach(item => item.style.display = 'flex');
     }
   },

@@ -37,11 +37,23 @@ const Viewer = {
     const modal = document.getElementById('viewer-modal');
     if (modal) {
       modal.addEventListener('click', (e) => {
-        if (e.target === modal || e.target.id === 'viewer-body') {
+        if (e.target === modal || e.target.id === 'viewer-body' || e.target.classList.contains('viewer-image-wrapper')) {
           this.close();
         }
       });
     }
+
+    // Window mouse pan events (registered once)
+    window.addEventListener('mousemove', (e) => {
+      if (!this.isPanning) return;
+      this.panX = e.clientX - this.startX;
+      this.panY = e.clientY - this.startY;
+      this.applyImageTransform();
+    });
+
+    window.addEventListener('mouseup', () => {
+      this.isPanning = false;
+    });
   },
 
   isOpen() {
@@ -77,7 +89,12 @@ const Viewer = {
     const zoomControls = document.getElementById('viewer-zoom-controls');
 
     if (filenameEl) filenameEl.textContent = file.name || 'File Preview';
-    if (bodyEl) bodyEl.innerHTML = '';
+    if (bodyEl) {
+      bodyEl.innerHTML = '';
+      bodyEl.scrollTop = 0;
+      bodyEl.scrollLeft = 0;
+      bodyEl.style.overflow = '';
+    }
     if (zoomControls) zoomControls.style.display = 'none';
     if (metaBadge) metaBadge.style.display = 'none';
     if (modeSwitch) {
@@ -108,9 +125,13 @@ const Viewer = {
     // 1. IMAGE PREVIEW
     if (isImage) {
       if (zoomControls) zoomControls.style.display = 'flex';
+      bodyEl.style.overflow = 'hidden';
       bodyEl.innerHTML = `
-        <img id="viewer-img-el" class="viewer-image" src="${url}" alt="${this.escapeHtml(file.name)}" referrerpolicy="no-referrer">
+        <div class="viewer-image-wrapper">
+          <img id="viewer-img-el" class="viewer-image" src="${url}" alt="${this.escapeHtml(file.name)}" referrerpolicy="no-referrer">
+        </div>
       `;
+      this.resetZoom();
       this.attachImagePan(bodyEl.querySelector('#viewer-img-el'));
     } 
     // 2. PDF VIEWER
@@ -643,6 +664,26 @@ const Viewer = {
   // ==========================================
   attachImagePan(img) {
     if (!img) return;
+
+    let lastTap = 0;
+
+    const handleDoubleTap = (e) => {
+      e.preventDefault();
+      if (this.currentZoom > 1.05) {
+        this.resetZoom();
+      } else {
+        this.currentZoom = 2;
+        this.panX = 0;
+        this.panY = 0;
+        const btnReset = document.getElementById('viewer-zoom-reset');
+        if (btnReset) btnReset.textContent = '200%';
+        this.applyImageTransform();
+      }
+    };
+
+    img.addEventListener('dblclick', handleDoubleTap);
+
+    // Mouse drag start
     img.addEventListener('mousedown', (e) => {
       if (this.currentZoom <= 1) return;
       e.preventDefault();
@@ -651,16 +692,36 @@ const Viewer = {
       this.startY = e.clientY - this.panY;
     });
 
-    window.addEventListener('mousemove', (e) => {
-      if (!this.isPanning) return;
-      this.panX = e.clientX - this.startX;
-      this.panY = e.clientY - this.startY;
-      this.applyImageTransform();
-    });
+    // Touch drag & double-tap for mobile
+    img.addEventListener('touchstart', (e) => {
+      const now = Date.now();
+      if (now - lastTap < 300) {
+        handleDoubleTap(e);
+        lastTap = 0;
+        return;
+      }
+      lastTap = now;
 
-    window.addEventListener('mouseup', () => {
+      if (e.touches.length === 1 && this.currentZoom > 1) {
+        this.isPanning = true;
+        this.startX = e.touches[0].clientX - this.panX;
+        this.startY = e.touches[0].clientY - this.panY;
+      }
+    }, { passive: false });
+
+    img.addEventListener('touchmove', (e) => {
+      if (!this.isPanning || e.touches.length !== 1) return;
+      e.preventDefault();
+      this.panX = e.touches[0].clientX - this.startX;
+      this.panY = e.touches[0].clientY - this.startY;
+      this.applyImageTransform();
+    }, { passive: false });
+
+    const endTouch = () => {
       this.isPanning = false;
-    });
+    };
+    img.addEventListener('touchend', endTouch);
+    img.addEventListener('touchcancel', endTouch);
   },
 
   zoom(delta) {
@@ -726,10 +787,14 @@ const Viewer = {
   close() {
     const modal = document.getElementById('viewer-modal');
     const bodyEl = document.getElementById('viewer-body');
-    if (bodyEl) bodyEl.innerHTML = ''; // Stop any audio/video
+    if (bodyEl) {
+      bodyEl.innerHTML = ''; // Stop any audio/video
+      bodyEl.style.overflow = '';
+    }
     if (modal) modal.classList.remove('open');
     this.activeFile = null;
     this.activeRawText = '';
+    this.isPanning = false;
   },
 
   download() {
